@@ -18,7 +18,7 @@
 将本项目中的 `OProPanel` 文件夹完整复制到系统的 CEP 扩展目录：
 > `C:\Program Files (x86)\Common Files\Adobe\CEP\extensions\`
 
-### 2. 开启开发者调试模式（必做）
+### 2. 开启开发者调试模式
 由于本插件可能未经过 Adobe 官方签名，直接打开 Premiere 可能会显示扩展无法加载。需要开启调试模式：
 1. 打开 Windows 注册表编辑器 (`regedit`)。
 2. 导航至 `HKEY_CURRENT_USER\Software\Adobe\CSXS.11`（注：末尾的数字取决于你的 PR 版本，如果是旧版可能是 CSXS.10 或更低，建议将存在的 CSXS 目录都修改）。
@@ -33,6 +33,11 @@
    * 在顶部菜单栏中依次点击 **窗口 (Window) -> 扩展 (Extensions) -> OProPanel**，调出插件面板。
    * 在时间线或项目面板中，**选中一个你要作为基础画面的视频/图像素材**。
    * 在 OProPanel 插件面板中操作，读取刚才生成的 JSON 文件，插件将自动完成该素材在时间线上的排列。
+
+## 作者与演示
+* **Bilibili 主页**：[点击访问](https://space.bilibili.com/344276085)
+* **插件使用演示视频**：[观看视频演示](https://www.bilibili.com/video/BV1ZTfGBGEsS/)
+* **作者个人网站**：[Ari Hiroko's Website](https://ari-hiroko.github.io/)
 
 ## 协议与致谢
 * 本项目的 Premiere 插件部分基于 [Adobe PProPanel](https://github.com/Adobe-CEP/Samples/tree/master/PProPanel) 衍生，遵循 Apache License 2.0 协议。

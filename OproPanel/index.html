@@ -1,0 +1,1022 @@
+<!doctype html>
+<html>
+
+<head>
+   <meta charset="utf-8" />
+   <script src="./lib/CSInterface.js"></script>
+   <script src="./lib/jquery-1.9.1.js"></script>
+   <script type="module" src="./web-components.js"></script>
+   <script type="module" src="./fluentplus.js"></script>
+   <link id="ppstyle" href="css/style.css" rel="stylesheet" type="text/css" />
+   <style>
+      * {
+         color: var(--neutral-foreground-rest);
+      }
+
+      html,
+      body {
+         overflow: hidden;
+      }
+
+      body {
+         background-color: var(--fill-color);
+         color: var(--neutral-foreground-rest);
+         margin: 0;
+         padding: 10px;
+         height: 100vh;
+         box-sizing: border-box;
+      }
+
+      .card-container {
+         background-color: transparent;
+      }
+   </style>
+   <script src="./ext.js"></script>
+</head>
+
+<script type="module">
+   import { baseLayerLuminance, StandardLuminance } from "./web-components.js";
+
+   document.addEventListener("DOMContentLoaded", function () {
+      var csInterface = new CSInterface();
+      const provider = document.querySelector("fluent-provider");
+
+      // 1. 定义更新主题的函数
+      function updateThemeWithAppSkinInfo(appSkinInfo) {
+         if (!appSkinInfo || !provider) return;
+
+         // 获取 Premiere 面板的背景 RGB 颜色
+         const panelBgColor = appSkinInfo.panelBackgroundColor.color;
+
+         // 将 Adobe 的 RGB 对象转换为 CSS 颜色字符串
+         const bgRgb = `rgb(${Math.round(panelBgColor.red)}, ${Math.round(panelBgColor.green)}, ${Math.round(panelBgColor.blue)})`;
+
+         // 计算粗略的亮度值 (0-255) 以判断是深色还是浅色模式
+         // Premiere 默认通常是深色，但用户可以调得很亮
+         const luminance =
+            0.299 * panelBgColor.red +
+            0.587 * panelBgColor.green +
+            0.114 * panelBgColor.blue;
+
+         // 根据亮度决定 Fluent UI 的模式
+         // 128 是中点，小于 128 为暗色，大于为亮色
+         if (luminance < 128) {
+            baseLayerLuminance.setValueFor(provider, StandardLuminance.DarkMode);
+         } else {
+            baseLayerLuminance.setValueFor(provider, StandardLuminance.LightMode);
+         }
+
+         // 核心：强制 body 的背景色与 Premiere 面板背景色完全一致
+         // 这样可以消除 Fluent UI 默认暗色与 Premiere 默认暗色之间的微小色差
+         document.body.style.backgroundColor = bgRgb;
+
+         // 如果你的卡片有背景色，也可以在这里动态覆盖，保持无缝融合
+         // document.body.style.setProperty('--fill-color', bgRgb);
+      }
+
+      // 2. 页面加载时，获取当前的宿主环境颜色并初始化
+      const hostEnv = csInterface.getHostEnvironment();
+      if (hostEnv && hostEnv.appSkinInfo) {
+         updateThemeWithAppSkinInfo(hostEnv.appSkinInfo);
+      } else {
+         // 如果在浏览器里调试(没有CEP环境)，默认给暗色
+         baseLayerLuminance.setValueFor(provider, StandardLuminance.DarkMode);
+      }
+
+      // 3. 监听 Premiere Pro 的主题变化事件 (当用户在首选项里拖动滑块时触发)
+      csInterface.addEventListener(
+         CSInterface.THEME_COLOR_CHANGED_EVENT,
+         function () {
+            // 重新获取环境信息并更新
+            const updatedHostEnv = csInterface.getHostEnvironment();
+            if (updatedHostEnv && updatedHostEnv.appSkinInfo) {
+               updateThemeWithAppSkinInfo(updatedHostEnv.appSkinInfo);
+            }
+         },
+      );
+      
+   });
+</script>
+
+<body onLoad="onLoaded()">
+   <fluent-provider>
+      <class="header">
+
+         <div class="card-container" id="titlec">
+            <div class="floating">
+               <div class="action-block">
+                  <fluent-avatar src="./lib/Latia.png" size="64" name="Atlias"></fluent-avatar>
+                  <div class="ccb">
+                     <p style="font-size: small; margin: 4px 0;">By EllAri </p>
+                     <fluent-anchor id="refresh-link" href="javascript:hisory.go(0)">刷新面板</fluent-anchor>
+                  </div>
+               </div>
+            </div>
+
+            <div class="info-block">
+               <p><b>用户:</b> <span id="username">[未初始化]</span></p>
+               <p><b>版本:</b> <span id="version_string">[未初始化]</span></p>
+               <p><b>当前序列:</b> <span id="active_seq">[未初始化]</span></p>
+            </div>
+         </div>
+
+         <main class="card-container">
+            <fluent-card>
+               <div class="card-header">
+                  <h2>YTPMV 操作</h2>
+                  <p style="font-size: small">因为我喜欢YTPMV，所以我叫它YTPMV操作</p>
+               </div>
+               <div class="card-content">
+                  <input type="file" id="jsonFileInput" accept=".json" style="display: none" />
+                  <fluent-button class="controlBg textStyle" onclick="loadJsonNative()">
+                     读取 JSON
+                  </fluent-button>
+                  <fluent-button class="controlBg textStyle"
+                     onClick="evalScript('$._PPP_.select1()')">从第一个序列开始选择</fluent-button>
+                  <fluent-button class="controlBg textStyle"
+                     onClick="evalScript('$._PPP_.select2()')">从第二个序列开始选择</fluent-button>
+                  <fluent-button class="controlBg textStyle" id="btn_PPRO_JSON" onclick="tieba()">
+                     关注Mizzle吧谢谢喵
+                  </fluent-button>
+               </div>
+            </fluent-card>
+
+            <fluent-card>
+               <div class="card-header">
+                  <h2>22-23 新增功能!</h2>
+               </div>
+               <div class="card-content">
+                  <fluent-button class="controlBg textStyle" id="btn_PPRO87"
+                     onClick="evalScript('$._PPP_.importSrtAddToCaptionTrack()')">导入 .srt 字幕文件并添加到新的字幕轨道</fluent-button>
+                  <fluent-button class="controlBg textStyle" id="btn_PPRO84"
+                     onClick="evalScript('$._PPP_.enableAllDisabledClips()')">启用序列中所有禁用的剪辑</fluent-button>
+                  <fluent-button class="controlBg textStyle" id="btn_PPRO85"
+                     onClick="evalScript('$._PPP_.showColorspaceInEvents()')">在事件中显示剪辑色彩空间</fluent-button>
+                  <fluent-button class="controlBg textStyle" id="btn_PPRO86"
+                     onClick="evalScript('$._PPP_.moveTrackItemOnTimeline()')">在时间轴上移动剪辑13秒</fluent-button>
+               </div>
+            </fluent-card>
+
+            <fluent-card>
+               <div class="card-header">
+                  <h2>14.3.1 新增功能!</h2>
+               </div>
+               <div class="card-content">
+                  <fluent-button class="controlBg textStyle" id="btn_PPRO81"
+                     onClick="evalScript('$._PPP_.performSceneEditDetectionOnSelection()')">在当前序列中检测剪辑</fluent-button>
+               </div>
+            </fluent-card>
+
+            <fluent-card>
+               <div class="card-header">
+                  <h2>14.1 新增功能!</h2>
+               </div>
+               <div class="card-content">
+                  <fluent-button class="controlBg textStyle" id="btn_PPRO77"
+                     onClick="evalScript('$._PPP_.openProduction()')">打开制作</fluent-button>
+                  <fluent-button class="controlBg textStyle" id="btn_PPRO78"
+                     onClick="evalScript('$._PPP_.toggleProductionLockState()')">切换制作锁定状态</fluent-button>
+                  <fluent-button class="controlBg textStyle" id="btn_PPRO79"
+                     onClick="evalScript('$._PPP_.closeAllOpenProductionProjects()')">关闭所有打开的制作项目</fluent-button>
+                  <fluent-button class="controlBg textStyle" id="btn_PPRO80"
+                     onClick="evalScript('$._PPP_.moveProductionProjectsToTrash()')">将所有打开的制作项目移动到回收站</fluent-button>
+                  <fluent-button class="controlBg textStyle" id="btn_PPRO82"
+                     onClick="evalScript('$._PPP_.newSequenceFromProjectSelection()')">从所选项目创建序列</fluent-button>
+                  <fluent-button class="controlBg textStyle" id="btn_PPRO83"
+                     onClick="evalScript('$._PPP_.adjustGraphicsWhiteLuminance()')">调整图形白色亮度</fluent-button>
+               </div>
+            </fluent-card>
+
+            <fluent-card>
+               <div class="card-header">
+                  <h2>14.0 新增功能!</h2>
+               </div>
+               <div class="card-content">
+                  <fluent-button class="controlBg textStyle" id="btn_PPRO76"
+                     onClick="evalScript('$._PPP_.createNewProject()')">创建新项目</fluent-button>
+                  <fluent-button class="controlBg textStyle" id="btn_PPRO72"
+                     onClick="evalScript('$._PPP_.generateSystemCompatibilityReport()')">生成系统兼容性报告</fluent-button>
+                  <fluent-button class="controlBg textStyle" id="btn_PPRO75"
+                     onClick="evalScript('$._PPP_.changeSequenceColorSpace()')">更改当前序列的色彩空间</fluent-button>
+               </div>
+            </fluent-card>
+
+            <fluent-card>
+               <div class="card-header">
+                  <h2>13.1 新增功能!</h2>
+               </div>
+               <div class="card-content">
+                  <fluent-button class="controlBg textStyle" id="btn_PPRO57"
+                     onClick="evalScript('$._PPP_.closeAllProjectsOtherThanActiveProject()')">关闭除当前项目外的所有项目</fluent-button>
+                  <fluent-button class="controlBg textStyle" id="btn_PPRO58"
+                     onClick="evalScript('$._PPP_.findAllAdjustmentLayersInProject()')">查找所有调整图层</fluent-button>
+                  <fluent-button class="controlBg textStyle" id="btn_PPRO59"
+                     onClick="evalScript('$._PPP_.consolidateDuplicates()')">合并重复的素材</fluent-button>
+                  <fluent-button class="controlBg textStyle" id="btn_PPRO60"
+                     onClick="evalScript('$._PPP_.closeAllSequences()')">关闭所有序列</fluent-button>
+                  <fluent-button class="controlBg textStyle" id="btn_PPRO62"
+                     onClick="evalScript('$._PPP_.reportSequenceVRSettings()')">报告序列VR设置</fluent-button>
+                  <fluent-button class="controlBg textStyle" id="btn_PPRO63"
+                     onClick="evalScript('$._PPP_.openProjectItemInSource()')">在源监视器中打开所选项目</fluent-button>
+                  <fluent-button class="controlBg textStyle" id="btn_PPRO64"
+                     onClick="evalScript('$._PPP_.reinterpretFootage()')">重新解释所选项目</fluent-button>
+                  <fluent-button class="controlBg textStyle" id="btn_PPRO66"
+                     onClick="evalScript('$._PPP_.createSubSequence()')">创建子序列</fluent-button>
+                  <fluent-button class="controlBg textStyle" id="btn_PPRO67"
+                     onClick="evalScript('$._PPP_.selectAllRetimedClips()')">选择所有重置时间的剪辑</fluent-button>
+                  <fluent-button class="controlBg textStyle" id="btn_PPRO68"
+                     onClick="evalScript('$._PPP_.selectReversedClips()')">选择所有反向的剪辑</fluent-button>
+                  <fluent-button class="controlBg textStyle" id="btn_PPRO69"
+                     onClick="evalScript('$._PPP_.logConsoleOutput()')">将控制台输出写入日志文件</fluent-button>
+                  <fluent-button class="controlBg textStyle" id="btn_PPRO70"
+                     onClick="evalScript('$._PPP_.setWorkspace()')">设置当前工作区</fluent-button>
+                  <fluent-button id="stitchusingdefaultpreset">在AME中拼接所选文件</fluent-button>
+               </div>
+            </fluent-card>
+
+            <fluent-card>
+               <div class="card-header">
+                  <h2>系统</h2>
+               </div>
+               <div class="card-content">
+                  <fluent-button class="controlBg textStyle" id="btn_PPRO33"
+                     onClick="evalScript('$._PPP_.closeFrontSourceClip()')">关闭最前方的源监视器剪辑</fluent-button>
+                  <fluent-button class="controlBg textStyle" id="btn_PPRO35"
+                     onClick="evalScript('$._PPP_.closeAllClipsInSourceMonitor()')">关闭源监视器中的所有剪辑</fluent-button>
+                  <fluent-button id="openfolder">打开 PProPanel 文件夹</fluent-button>
+                  <fluent-button id="openlogfilefolder">打开 Premiere Pro 的日志文件夹</fluent-button>
+                  <fluent-button class="controlBg textStyle" id="btn_PPRO7"
+                     onClick="evalScript('$._PPP_.pokeAnywhere()')">检测 Anywhere 服务器</fluent-button>
+                  <fluent-button class="controlBg textStyle" id="btn_PPRO71"
+                     onClick="evalScript('$._PPP_.enumerateTeamProjects()')">识别打开的团队项目</fluent-button>
+                  <fluent-button id="checkforums">查看 SDK 论坛</fluent-button>
+                  <fluent-button id="readAPIdocs">阅读 API 文档</fluent-button>
+                  <fluent-button id="copypresets">复制预设</fluent-button>
+                  <fluent-button class="controlBg textStyle" id="btn_PPRO18"
+                     onClick="evalScript('$._PPP_.getnumAEProjectItems()')">AE 项目项目计数</fluent-button>
+                  <fluent-button class="controlBg textStyle" id="btn_PPRO49"
+                     onClick="evalScript('$._PPP_.turnOffStartDialog()')">关闭启动对话框</fluent-button>
+                  <fluent-button class="controlBg textStyle" id="btn_PPRO25"
+                     onClick="evalScript('$._PPP_.clearCache()')">清除媒体缓存</fluent-button>
+                  <fluent-button class="controlBg textStyle" id="btn_PPRO61"
+                     onClick="evalScript('$._PPP_.dumpAllPresets()')">列出可用的导出预设</fluent-button>
+               </div>
+            </fluent-card>
+            <fluent-card>
+               <div class="card-header">
+                  <h2>导入与创建</h2>
+               </div>
+               <div class="card-content">
+                  <fluent-button id="ingest">摄取文件, 创建代理</fluent-button>
+                  <fluent-button class="controlBg textStyle" id="btn_PPRO42"
+                     onClick="evalScript('$._PPP_.importMoGRT()')">导入 MoGRT</fluent-button>
+                  <fluent-button class="controlBg textStyle" id="btn_PPRO2"
+                     onClick="evalScript('$._PPP_.createSequence()')">创建序列</fluent-button>
+                  <fluent-button class="controlBg textStyle" id="btn_PPRO37"
+                     onClick="evalScript('$._PPP_.importComps()')">从 AE 项目导入合成</fluent-button>
+                  <fluent-button id="newseqfrompreset">从预设创建序列</fluent-button>
+                  <fluent-button class="controlBg textStyle" id="btn_PPRO3"
+                     onClick="evalScript('$._PPP_.openProject()')">打开不同的项目</fluent-button>
+                  <fluent-button class="controlBg textStyle" id="btn_PPRO5"
+                     onClick="evalScript('$._PPP_.importFiles()')">导入文件</fluent-button>
+                  <fluent-button class="controlBg textStyle" id="btn_PPRO8"
+                     onClick="evalScript('$._PPP_.openInSource()')">在源监视器中打开...</fluent-button>
+                  <fluent-button class="controlBg textStyle" id="btn_PPRO24"
+                     onClick="evalScript('$._PPP_.setProxiesON()')">为第一个项目添加代理</fluent-button>
+                  <div id="dragthing" draggable="true" ondragstart="dragHandler(event)" class="droppable">
+                     拖放导入
+                  </div>
+               </div>
+            </fluent-card>
+
+            <fluent-card>
+               <div class="card-header">
+                  <h2>元数据和项目操作</h2>
+               </div>
+               <div class="card-content">
+                  <fluent-button id="toggleproxy">切换当前项目中的代理</fluent-button>
+                  <fluent-button class="controlBg textStyle" id="btn_PPRO9"
+                     onClick="evalScript('$._PPP_.replaceMedia()')">替换媒体...</fluent-button>
+                  <fluent-button class="controlBg textStyle" id="btn_PPRO10"
+                     onClick="evalScript('$._PPP_.createSequenceMarkers()')">添加序列标记</fluent-button>
+                  <fluent-button class="controlBg textStyle" id="btn_PPRO16"
+                     onClick="evalScript('$._PPP_.addClipMarkers()')">添加剪辑标记</fluent-button>
+                  <fluent-button class="controlBg textStyle" id="btn_PPRO17"
+                     onClick="evalScript('$._PPP_.updatePAR()')">更新 PAR</fluent-button>
+                  <fluent-button class="controlBg textStyle" id="btn_PPRO11"
+                     onClick="evalScript('$._PPP_.mungeXMP()')">操作 XMP</fluent-button>
+                  <fluent-button class="controlBg textStyle" id="btn_PPRO14"
+                     onClick="evalScript('$._PPP_.updateAllProjectItems()')">更新所有媒体</fluent-button>
+                  <fluent-button class="controlBg textStyle" id="btn_PPRO15"
+                     onClick="evalScript('$._PPP_.modifyProjectMetadata()')">修改项目元数据</fluent-button>
+                  <fluent-button class="controlBg textStyle" id="btn_PPRO23"
+                     onClick="evalScript('$._PPP_.setScratchDisk()')">设置暂存盘路径</fluent-button>
+                  <fluent-button class="controlBg textStyle" id="btn_PPRO27"
+                     onClick="evalScript('$._PPP_.randomizeSequenceSelection()')">随机选择序列</fluent-button>
+                  <fluent-button class="controlBg textStyle" id="btn_PPRO28"
+                     onClick="evalScript('$._PPP_.muteFun()')">静音的乐趣!</fluent-button>
+                  <fluent-button class="controlBg textStyle" id="btn_PPRO29"
+                     onClick="evalScript('$._PPP_.onPlayWithKeyframes()')">操作关键帧</fluent-button>
+                  <fluent-button class="controlBg textStyle" id="btn_PPRO30"
+                     onClick="evalScript('$._PPP_.insertOrAppend()')">插入或附加到活动序列</fluent-button>
+                  <fluent-button class="controlBg textStyle" id="btn_PPRO56"
+                     onClick="evalScript('$._PPP_.insertOrAppendToTopTracks()')">插入或附加到顶部轨道</fluent-button>
+                  <fluent-button class="controlBg textStyle" id="btn_PPRO31"
+                     onClick="evalScript('$._PPP_.overWrite()')">在 CTI 位置覆盖</fluent-button>
+                  <fluent-button class="controlBg textStyle" id="btn_PPRO36"
+                     onClick="evalScript('$._PPP_.changeLabel()')">标记第一个项目</fluent-button>
+                  <fluent-button class="controlBg textStyle" id="btn_PPRO21"
+                     onClick="evalScript('$._PPP_.addSubClip()')">创建子剪辑</fluent-button>
+                  <fluent-button class="controlBg textStyle" id="btn_PPRO44"
+                     onClick="evalScript('$._PPP_.reportCurrentProjectSelection()')">向事件面板报告选择</fluent-button>
+                  <fluent-button class="controlBg textStyle" id="btn_PPRO43"
+                     onClick="evalScript('$._PPP_.randomizeProjectSelection()')">随机选择项目</fluent-button>
+                  <fluent-button class="controlBg textStyle" id="btn_PPRO45"
+                     onClick="evalScript('$._PPP_.setOffline()')">使所选项目离线</fluent-button>
+                  <fluent-button class="controlBg textStyle" id="btn_PPRO47"
+                     onClick="evalScript('$._PPP_.setAllOnline()')">使所有离线项目在线</fluent-button>
+                  <fluent-button class="controlBg textStyle" id="btn_PPRO48"
+                     onClick="evalScript('$._PPP_.updateFrameRate()')">更新帧率</fluent-button>
+                  <fluent-button class="controlBg textStyle" id="btn_PPRO50"
+                     onClick="evalScript('$._PPP_.changeMarkerColors()')">更改标记颜色</fluent-button>
+                  <fluent-button class="controlBg textStyle" id="btn_PPRO52"
+                     onClick="evalScript('$._PPP_.changeSeqTimeCodeDisplay()')">更改序列时间码显示</fluent-button>
+                  <fluent-button class="controlBg textStyle" id="btn_PPRO32"
+                     onClick="evalScript('$._PPP_.saveCurrentProjectLayout()')">保存项目布局</fluent-button>
+                  <fluent-button class="controlBg textStyle" id="btn_PPRO51"
+                     onClick="evalScript('$._PPP_.setProjectPanelMeta()')">加载项目布局</fluent-button>
+                  <fluent-button class="controlBg textStyle" id="btn_PPRO12"
+                     onClick="evalScript('$._PPP_.exportSequenceAsPrProj()')">从序列新建项目</fluent-button>
+                  <fluent-button class="controlBg textStyle" id="btn_PPRO73"
+                     onClick="evalScript('$._PPP_.autoReframeActiveSequence()')">自动重构当前序列</fluent-button>
+               </div>
+            </fluent-card>
+            <fluent-card>
+               <div class="card-header">
+                  <h2>导出</h2>
+               </div>
+               <div class="card-content">
+                  <fluent-button id="transcodeusingdefaultpreset">转码第一个项目</fluent-button>
+                  <fluent-button id="transcodeexternal">转码外部文件</fluent-button>
+                  <fluent-button id="saveaspng">将序列帧另存为 .png</fluent-button>
+                  <fluent-button class="controlBg textStyle" id="btn_PPRO41"
+                     onClick="evalScript('$._PPP_.consolidateProject()')">合并与传输项目</fluent-button>
+                  <fluent-button class="controlBg textStyle" id="btn_PPRO20"
+                     onClick="evalScript('$._PPP_.dumpXMPFromAllProjectItems()')">从所有项目转储 XMP</fluent-button>
+                  <fluent-button class="controlBg textStyle" id="btn_PPRO34"
+                     onClick="evalScript('$._PPP_.saveProjectCopy()')">保存项目副本...</fluent-button>
+                  <fluent-button class="controlBg textStyle" id="btn_PPRO4"
+                     onClick="evalScript('$._PPP_.saveProject()')">保存项目</fluent-button>
+                  <fluent-button class="controlBg textStyle" id="btn_PPRO26"
+                     onClick="evalScript('$._PPP_.exportFramesForMarkers()')">为标记导出帧</fluent-button>
+                  <fluent-button class="controlBg textStyle" id="btn_PPRO6"
+                     onClick="evalScript('$._PPP_.exportFCPXML()')">导出 FCP XML</fluent-button>
+                  <fluent-button class="controlBg textStyle" id="btn_PPRO22"
+                     onClick="evalScript('$._PPP_.exportAAF()')">将序列导出为 AAF</fluent-button>
+                  <fluent-button id="renderusingdefaultpreset">在 AME 中渲染当前序列</fluent-button>
+               </div>
+            </fluent-card>
+            <fluent-card>
+               <div class="card-header">
+                  <h2>哦对了</h2>
+               </div>
+               <div class="card-content">
+                  <fluent-button id="web_PPro_B"
+                     onClick="openExternalSite('https://github.com/Adobe-CEP/Samples/tree/master/PProPanel/', '基于此项目的改造')">PProPanel</fluent-button>
+                  <fluent-button id="web_Git_B"
+                     onClick="openExternalSite('https://ari-hiroko.github.io/', '踩踩背')">神秘GitHub主页</fluent-button>
+                  <fluent-button id="web_OPro_B"
+                     onClick="openExternalSite('https://github.com/Ari-Hiroko/OtomadProPanel', '发布地址')">此项目地址</fluent-button>
+                  <fluent-button id="web_EV_B"
+                     onClick="openExternalSite('https://ari-hiroko.github.io/subpages/video/VID%20TEST/nav.html/', '神秘视频网站')">逸站</fluent-button>
+                  <fluent-button id="web_B_B"
+                     onClick="openExternalSite('https://space.bilibili.com/344276085/', '粉丝最多的账号')">B站主页</fluent-button>
+                  <fluent-button id="web_Flu_B"
+                     onClick="openExternalSite('https://github.com/microsoft/fluentui/', 'Fluent UI GitHub')">Fluent
+                     UI</fluent-button>
+                  <fluent-button id="web_Ge_B"
+                     onClick="openExternalSite('https://gemini.google.com/', '我就喜欢玩这个')">Gemini</fluent-button>
+               </div>
+            </fluent-card>
+            <fluent-card>
+               <div class="card-header">
+                  <h2>更新内容 - 2026/2/24</h2>
+               </div>
+
+               <div class="card-content">
+                  <p>添加了一堆广告。</p>
+                  <fluent-button appearance="accent" onClick="alert('艾雅米诺')">👎差评</fluent-button>
+               </div>
+            </fluent-card>
+         </main>
+   </fluent-provider>
+   <script>
+      // Scripts that need to run after the DOM is fully parsed.
+      document.addEventListener("DOMContentLoaded", function () {
+         // Re-attaching event listeners for dynamically added fluent-buttons
+         $("#copypresets").on("click", function (e) {
+            e.preventDefault();
+
+            var csInterface = new CSInterface();
+            var OSVersion = csInterface.getOSInformation();
+            var path = csInterface.getSystemPath(SystemPath.EXTENSION);
+
+            csInterface.evalScript("$._PPP_.getUserName()", myUserNameFunction);
+
+            if (OSVersion) {
+               if (OSVersion.indexOf("Windows") >= 0) {
+                  var initPath =
+                     "C:\\Users\\" + document.getElementById("username").innerHTML;
+                  var sep = "\\\\";
+                  path = path.replace(/\//g, sep);
+               } else {
+                  var initPath =
+                     "/Users/" + document.getElementById("username").innerHTML;
+                  var sep = "/";
+               }
+
+               path =
+                  path +
+                  sep +
+                  "payloads" +
+                  sep +
+                  "Effect\ Presets\ and\ Custom\ Items.prfpset";
+
+               var readResult = window.cep.fs.readFile(path);
+
+               if (0 == readResult.err) {
+                  var addOutPath =
+                     "/Documents/Adobe/Premiere\ Pro/22.0/Profile-" +
+                     document.getElementById("username").innerHTML +
+                     "/Effect\ Presets\ and\ Custom\ Items.prfpset";
+                  var fullOutPath = initPath + addOutPath;
+                  var writeResult = window.cep.fs.writeFile(
+                     fullOutPath,
+                     readResult.data,
+                  );
+                  var resultMsg =
+                     0 == writeResult.err
+                        ? "成功复制效果预设。"
+                        : "复制效果预设失败。";
+                  csInterface.evalScript(
+                     "$._PPP_.updateEventPanel('" + resultMsg + "')",
+                  );
+               }
+            }
+         });
+
+         $("#toggleproxy").on("click", function (e) {
+            e.preventDefault();
+            var csInterface = new CSInterface();
+            csInterface.evalScript(
+               "$._PPP_.toggleProxyState()",
+               mySetProxyFunction,
+            );
+            csInterface.evalScript(
+               "$._PPP_.getProjectProxySetting()",
+               myGetProxyFunction,
+            );
+         });
+
+         $("#checkforums").on("click", function (e) {
+            e.preventDefault();
+            new CSInterface().openURLInDefaultBrowser(
+               "https://forums.adobe.com/community/premiere/sdk",
+            );
+         });
+
+         $("#openfolder").on("click", function (e) {
+            e.preventDefault();
+            var csInterface = new CSInterface();
+            var path = csInterface.getSystemPath(SystemPath.EXTENSION);
+            if (csInterface.getOSInformation().indexOf("Windows") >= 0) {
+               window.cep.process.createProcess(
+                  "C:\\Windows\\explorer.exe",
+                  path.replace(/\//g, "\\"),
+               );
+            } else {
+               window.cep.process.createProcess("/usr/bin/open", path);
+            }
+         });
+
+         $("#openlogfilefolder").on("click", function (e) {
+            e.preventDefault();
+            var csInterface = new CSInterface();
+            var userDataPath = csInterface.getSystemPath(SystemPath.USER_DATA);
+            var actualDestinationPath = userDataPath.split("A")[0];
+
+            if (csInterface.getOSInformation().indexOf("Windows") >= 0) {
+               actualDestinationPath +=
+                  "AppData/Roaming/Adobe/Premiere Pro/22.0/logs";
+               window.cep.process.createProcess(
+                  "C:\\Windows\\explorer.exe",
+                  actualDestinationPath.replace(/\//g, "\\"),
+               );
+            } else {
+               actualDestinationPath += "Preferences/Adobe/Premiere Pro/22.0/logs";
+               window.cep.process.createProcess(
+                  "/usr/bin/open",
+                  actualDestinationPath,
+               );
+            }
+         });
+
+         $("#readAPIdocs").on("click", function (e) {
+            e.preventDefault();
+            new CSInterface().openURLInDefaultBrowser(
+               "http://ppro.aenhancers.com",
+            );
+         });
+
+         $("#newseqfrompreset").on("click", function (e) {
+            e.preventDefault();
+            var csInterface = new CSInterface();
+            var path =
+               csInterface.getSystemPath(SystemPath.EXTENSION) +
+               "/payloads/PProPanel.sqpreset";
+            var script =
+               "$._PPP_.createSequenceFromPreset('" +
+               path.replace(/\\/g, "\\\\").replace(/"/g, '\\"') +
+               "')";
+            csInterface.evalScript(script);
+         });
+
+         $("#renderusingdefaultpreset").on("click", function (e) {
+            e.preventDefault();
+            var csInterface = new CSInterface();
+            var path =
+               csInterface.getSystemPath(SystemPath.EXTENSION) +
+               "/payloads/example.epr";
+            var script =
+               "$._PPP_.render('" +
+               path.replace(/\\/g, "\\\\").replace(/"/g, '\\"') +
+               "')";
+            csInterface.evalScript(script);
+         });
+
+         $("#stitchusingdefaultpreset").on("click", function (e) {
+            e.preventDefault();
+            var csInterface = new CSInterface();
+            var path =
+               csInterface.getSystemPath(SystemPath.EXTENSION) +
+               "/payloads/example.epr";
+            var script =
+               "$._PPP_.stitch('" +
+               path.replace(/\\/g, "\\\\").replace(/"/g, '\\"') +
+               "')";
+            csInterface.evalScript(script);
+         });
+
+         $("#transcodeexternal").on("click", function (e) {
+            e.preventDefault();
+            var csInterface = new CSInterface();
+            var path =
+               csInterface.getSystemPath(SystemPath.EXTENSION) +
+               "/payloads/example.epr";
+            var script =
+               "$._PPP_.transcodeExternal('" +
+               path.replace(/\\/g, "\\\\").replace(/"/g, '\\"') +
+               "')";
+            csInterface.evalScript(script);
+         });
+
+         $("#saveaspng").on("click", function (e) {
+            e.preventDefault();
+            var csInterface = new CSInterface();
+            var path =
+               csInterface.getSystemPath(SystemPath.EXTENSION) +
+               "/payloads/png.epr";
+            var script =
+               "$._PPP_.exportCurrentFrameAsPNG('" +
+               path.replace(/\\/g, "\\\\").replace(/"/g, '\\"') +
+               "')";
+            csInterface.evalScript(script);
+         });
+
+         $("#ingest").on("click", function (e) {
+            e.preventDefault();
+            var csInterface = new CSInterface();
+            var path =
+               csInterface.getSystemPath(SystemPath.EXTENSION) +
+               "/payloads/example.epr";
+            var script =
+               "$._PPP_.ingestFiles('" +
+               path.replace(/\\/g, "\\\\").replace(/"/g, '\\"') +
+               "')";
+            csInterface.evalScript(script);
+         });
+
+         $("#transcodeusingdefaultpreset").on("click", function (e) {
+            e.preventDefault();
+            var csInterface = new CSInterface();
+            var path =
+               csInterface.getSystemPath(SystemPath.EXTENSION) +
+               "/payloads/example.epr";
+            var script =
+               "$._PPP_.transcode('" +
+               path.replace(/\\/g, "\\\\").replace(/"/g, '\\"') +
+               "')";
+            csInterface.evalScript(script);
+         });
+
+         document.body.onbeforeunload = function () {
+            var csInterface = new CSInterface();
+            csInterface.evalScript("$._PPP_.closeLog()");
+         };
+      });
+      function loadJsonNative() {
+         var csInterface = new CSInterface();
+         var result = window.cep.fs.showOpenDialog(
+            false,
+            false,
+            "选择 extracted_notes.json",
+            "",
+            ["json"],
+         );
+
+         if (result.err === 0 && result.data.length > 0) {
+            var filePath = result.data[0];
+            var safePath = filePath.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+            csInterface.evalScript(
+               '$._PPP_.importJSONFromPath("' + safePath + '")',
+            );
+         }
+      }
+      function tieba() {
+         // 獲取插件與 Adobe 宿主通信的接口
+         var cs = new CSInterface();
+
+         if (confirm("111真关注吗")) {
+            // 調用系統瀏覽器開啟 URL，這樣你的插件面板還能保持原樣
+            cs.openURLInDefaultBrowser("https://tieba.baidu.com/f?kw=mizzle");
+         }
+
+      }
+      function openExternalSite(url, confirmMsg) {
+         var cs = new CSInterface();
+         if (confirm(confirmMsg)) {
+            cs.openURLInDefaultBrowser(url);
+         }
+      }
+   </script>
+   <script type="text/javascript">
+      $(document).ready(function () {
+         // For functions which require interaction at the JavaScript level, we provide these JQuery-based
+         // handlers, instead of directly invoking ExtendScript .This gives the JavaScript layer a chance
+         // to pass data into the ExtendScript layer, and process the results.
+
+         $("#copypresets").on("click", function (e) {
+            e.preventDefault();
+
+            var csInterface = new CSInterface();
+            var OSVersion = csInterface.getOSInformation();
+            var path = csInterface.getSystemPath(SystemPath.EXTENSION);
+
+            csInterface.evalScript("$._PPP_.getUserName()", myUserNameFunction);
+
+            if (OSVersion) {
+               // The path always comes back with '/' path separators. Windows needs '\\'.
+
+               if (OSVersion.indexOf("Windows") >= 0) {
+                  var initPath = "C:\\Users\\" + username.innerHTML;
+                  var sep = "\\\\";
+                  path = path.replace(/\//g, sep);
+               } else {
+                  var initPath = "/Users/" + username.innerHTML;
+                  var sep = "/";
+               }
+
+               path =
+                  path +
+                  sep +
+                  "payloads" +
+                  sep +
+                  "Effect\ Presets\ and\ Custom\ Items.prfpset";
+
+               var readResult = window.cep.fs.readFile(path);
+
+               if (0 == readResult.err) {
+                  // We build a path to the preset, based on the OS user's name.
+
+                  var addOutPath =
+                     "/Documents/Adobe/Premiere\ Pro/22.0/Profile-" +
+                     username.innerHTML +
+                     "/Effect\ Presets\ and\ Custom\ Items.prfpset";
+                  var fullOutPath = initPath + addOutPath;
+                  var writeResult = window.cep.fs.writeFile(
+                     fullOutPath,
+                     readResult.data,
+                  );
+                  var resultMsg = "";
+
+                  if (0 == writeResult.err) {
+                     resultMsg =
+                        "Successfully copied effect presets from panel to current user configuration.";
+                  } else {
+                     resultMsg = "Failed to copy effect presets.";
+                  }
+
+                  var postToEventPanel = "$._PPP_.updateEventPanel('";
+                  postToEventPanel += resultMsg;
+                  postToEventPanel += "'";
+                  postToEventPanel += ")";
+
+                  csInterface.evalScript(postToEventPanel);
+               }
+            }
+         });
+
+         $("#toggleproxy").on("click", function (e) {
+            e.preventDefault();
+            var csInterface = new CSInterface();
+            csInterface.evalScript(
+               "$._PPP_.toggleProxyState()",
+               mySetProxyFunction,
+            );
+            csInterface.evalScript(
+               "$._PPP_.getProjectProxySetting()",
+               myGetProxyFunction,
+            );
+         });
+
+         $("#checkforums").on("click", function (e) {
+            e.preventDefault();
+            var csInterface = new CSInterface();
+            csInterface.openURLInDefaultBrowser(
+               "https://forums.adobe.com/community/premiere/sdk",
+            );
+         });
+
+         $("#openfolder").on("click", function (e) {
+            e.preventDefault();
+            var csInterface = new CSInterface();
+            var OSVersion = csInterface.getOSInformation();
+            var path = csInterface.getSystemPath(SystemPath.EXTENSION);
+
+            if (OSVersion) {
+               // The path always comes back with '/' path separators. Windows needs '\\'.
+               if (OSVersion.indexOf("Windows") >= 0) {
+                  var sep = "\\";
+                  path = path.replace(/\//g, sep);
+                  window.cep.process.createProcess(
+                     "C:\\Windows\\explorer.exe",
+                     path,
+                  );
+               } else {
+                  window.cep.process.createProcess("/usr/bin/open", path);
+               }
+            }
+         });
+
+         $("#openlogfilefolder").on("click", function (e) {
+            e.preventDefault();
+            var csInterface = new CSInterface();
+            var OSVersion = csInterface.getOSInformation();
+            var userDataPath = csInterface.getSystemPath(SystemPath.USER_DATA);
+            var justTheFirstBit = userDataPath.split("A");
+            var actualDestinationPath = justTheFirstBit[0];
+
+            if (OSVersion) {
+               // The path always comes back with '/' path separators. Windows needs '\\'.
+               if (OSVersion.indexOf("Windows") >= 0) {
+                  actualDestinationPath =
+                     actualDestinationPath +
+                     "AppData/Roaming/Adobe/Premiere Pro/22.0/logs";
+                  var sep = "\\";
+                  actualDestinationPath = actualDestinationPath.replace(/\//g, sep);
+                  window.cep.process.createProcess(
+                     "C:\\Windows\\explorer.exe",
+                     actualDestinationPath,
+                  );
+               } else {
+                  actualDestinationPath =
+                     actualDestinationPath +
+                     "Preferences/Adobe/Premiere Pro/22.0/logs";
+                  window.cep.process.createProcess(
+                     "/usr/bin/open",
+                     actualDestinationPath,
+                  );
+               }
+            }
+         });
+
+         $("#readAPIdocs").on("click", function (e) {
+            e.preventDefault();
+            var csInterface = new CSInterface();
+            csInterface.openURLInDefaultBrowser("http://ppro.aenhancers.com");
+         });
+
+         $("#newseqfrompreset").on("click", function (e) {
+            e.preventDefault();
+            var csInterface = new CSInterface();
+            var OSVersion = csInterface.getOSInformation();
+            var path = csInterface.getSystemPath(SystemPath.EXTENSION);
+
+            if (OSVersion) {
+               // The path always comes back with '/' path separators. Windows needs '\\'.
+               if (OSVersion.indexOf("Windows") >= 0) {
+                  var sep = "\\\\";
+                  path = path.replace(/\//g, sep);
+               } else {
+                  var sep = "/";
+               }
+
+               // Build a String to pass the path to the script.
+               // (Sounds more complicated than it is.)
+
+               path = path + sep + "payloads" + sep + "PProPanel.sqpreset";
+
+               var pre = "$._PPP_.createSequenceFromPreset('";
+               var post = "'";
+               var postpost = ")";
+
+               var whole_megillah = pre + path + post + postpost;
+
+               csInterface.evalScript(whole_megillah);
+            }
+         });
+
+         $("#renderusingdefaultpreset").on("click", function (e) {
+            e.preventDefault();
+            var csInterface = new CSInterface();
+            var OSVersion = csInterface.getOSInformation();
+            var path = csInterface.getSystemPath(SystemPath.EXTENSION);
+
+            if (OSVersion) {
+               // The path always comes back with '/' path separators. Windows needs '\\'.
+               if (OSVersion.indexOf("Windows") >= 0) {
+                  var sep = "\\\\";
+                  path = path.replace(/\//g, sep);
+               } else {
+                  var sep = "/";
+               }
+
+               // Build a String to pass the path to the script.
+               // (Sounds more complicated than it is.)
+
+               path = path + sep + "payloads" + sep + "example.epr";
+
+               var pre = "$._PPP_.render('";
+               var post = "'";
+               var postpost = ")";
+
+               var whole_megillah = pre + path + post + postpost;
+
+               csInterface.evalScript(whole_megillah);
+            }
+         });
+
+         $("#stitchusingdefaultpreset").on("click", function (e) {
+            e.preventDefault();
+            var csInterface = new CSInterface();
+            var OSVersion = csInterface.getOSInformation();
+            var path = csInterface.getSystemPath(SystemPath.EXTENSION);
+
+            if (OSVersion) {
+               // The path always comes back with '/' path separators. Windows needs '\\'.
+               if (OSVersion.indexOf("Windows") >= 0) {
+                  var sep = "\\\\";
+                  path = path.replace(/\//g, sep);
+               } else {
+                  var sep = "/";
+               }
+
+               // Build a String to pass the path to the script.
+               // (Sounds more complicated than it is.)
+
+               path = path + sep + "payloads" + sep + "example.epr";
+
+               var pre = "$._PPP_.stitch('";
+               var post = "'";
+               var postpost = ")";
+
+               var whole_megillah = pre + path + post + postpost;
+
+               csInterface.evalScript(whole_megillah);
+            }
+         });
+
+         $("#transcodeexternal").on("click", function (e) {
+            e.preventDefault();
+            var csInterface = new CSInterface();
+            var OSVersion = csInterface.getOSInformation();
+            var path = csInterface.getSystemPath(SystemPath.EXTENSION);
+
+            if (OSVersion) {
+               // The path always comes back with '/' path separators. Windows needs '\\'.
+               if (OSVersion.indexOf("Windows") >= 0) {
+                  var sep = "\\\\";
+                  path = path.replace(/\//g, sep);
+               } else {
+                  var sep = "/";
+               }
+
+               // Build a String to pass the path to the script.
+               // (Sounds more complicated than it is.)
+
+               path = path + sep + "payloads" + sep + "example.epr";
+
+               var pre = "$._PPP_.transcodeExternal('";
+               var post = "'";
+               var postpost = ")";
+
+               var whole_megillah = pre + path + post + postpost;
+
+               csInterface.evalScript(whole_megillah);
+            }
+         });
+
+         $("#saveaspng").on("click", function (e) {
+            e.preventDefault();
+            var csInterface = new CSInterface();
+            var OSVersion = csInterface.getOSInformation();
+            var path = csInterface.getSystemPath(SystemPath.EXTENSION);
+
+            if (OSVersion) {
+               // The path always comes back with '/' path separators. Windows needs '\\'.
+               if (OSVersion.indexOf("Windows") >= 0) {
+                  var sep = "\\\\";
+                  path = path.replace(/\//g, sep);
+               } else {
+                  var sep = "/";
+               }
+
+               // Build a String to pass the path to the script.
+               // (Sounds more complicated than it is.)
+
+               path = path + sep + "payloads" + sep + "png.epr";
+
+               var pre = "$._PPP_.exportCurrentFrameAsPNG('";
+               var post = "'";
+               var postpost = ")";
+
+               var whole_megillah = pre + path + post + postpost;
+
+               csInterface.evalScript(whole_megillah);
+            }
+         });
+
+         $("#ingest").on("click", function (e) {
+            e.preventDefault();
+            var csInterface = new CSInterface();
+            var OSVersion = csInterface.getOSInformation();
+            var path = csInterface.getSystemPath(SystemPath.EXTENSION);
+
+            if (OSVersion) {
+               // The path always comes back with '/' path separators. Windows needs '\\'.
+               if (OSVersion.indexOf("Windows") >= 0) {
+                  var sep = "\\\\";
+                  path = path.replace(/\//g, sep);
+               } else {
+                  var sep = "/";
+               }
+
+               // Build a String to pass the path to the script.
+               // (Sounds more complicated than it is.)
+
+               path = path + sep + "payloads" + sep + "example.epr";
+
+               var pre = "$._PPP_.ingestFiles('";
+               var post = "'";
+               var postpost = ");";
+
+               var whole_megillah = pre + path + post + postpost;
+
+               csInterface.evalScript(whole_megillah);
+            }
+         });
+
+         $("#transcodeusingdefaultpreset").on("click", function (e) {
+            e.preventDefault();
+            var csInterface = new CSInterface();
+            var OSVersion = csInterface.getOSInformation();
+            var path = csInterface.getSystemPath(SystemPath.EXTENSION);
+
+            if (OSVersion) {
+               // The path always comes back with '/' path separators. Windows needs '\\'.
+               if (OSVersion.indexOf("Windows") >= 0) {
+                  var sep = "\\\\";
+                  path = path.replace(/\//g, sep);
+               } else {
+                  var sep = "/";
+               }
+
+               // Build a String to pass the path to the script.
+               // (Sounds more complicated than it is.)
+
+               path = path + sep + "payloads" + sep + "example.epr";
+
+               var pre = "$._PPP_.transcode('";
+               var post = "'";
+               var postpost = ")";
+
+               var whole_megillah = pre + path + post + postpost;
+
+               csInterface.evalScript(whole_megillah);
+            }
+         });
+      });
+   </script>
+</body>
+
+</html>

@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fluent UI Web Components 完整示例庫</title>
+    
+    <script type="module">
+        import { 
+            provideFluentDesignSystem, 
+            fluentAccordion, fluentAccordionItem,
+            fluentButton, fluentBadge,
+            fluentCheckbox, fluentRadio, fluentRadioGroup,
+            fluentSwitch, fluentSlider, fluentSliderLabel,
+            fluentTextField, fluentTextArea,
+            fluentSelect, fluentOption,
+            fluentTabs, fluentTab, fluentTabPanel,
+            fluentProgress, fluentProgressRing,
+            fluentMenu, fluentMenuItem,
+            fluentTreeView, fluentTreeItem,
+            fluentCard
+        } from "./web-components.js";
+
+        // 註冊所有組件
+        provideFluentDesignSystem().register(
+            fluentAccordion(), fluentAccordionItem(),
+            fluentButton(), fluentBadge(),
+            fluentCheckbox(), fluentRadio(), fluentRadioGroup(),
+            fluentSwitch(), fluentSlider(), fluentSliderLabel(),
+            fluentTextField(), fluentTextArea(),
+            fluentSelect(), fluentOption(),
+            fluentTabs(), fluentTab(), fluentTabPanel(),
+            fluentProgress(), fluentProgressRing(),
+            fluentMenu(), fluentMenuItem(),
+            fluentTreeView(), fluentTreeItem(),
+            fluentCard()
+        );
+    </script>
+
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding: 2rem;
+            background-color: #f3f2f1;
+            color: #323130;
+        }
+        h1 { margin-bottom: 2rem; }
+        h2 { margin-top: 2rem; border-bottom: 1px solid #ccc; padding-bottom: 0.5rem; }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+
+        .component-section {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .row {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Fluent UI Web Components 完整示例庫</h1>
+
+    <div class="container">
+        
+        <div class="component-section">
+            <h3>按鈕與徽章 (Buttons & Badges)</h3>
+            <div class="row">
+                <fluent-button appearance="accent">Accent 按鈕</fluent-button>
+                <fluent-button appearance="neutral">Neutral 按鈕</fluent-button>
+            </div>
+            <div class="row">
+                <fluent-button appearance="outline">Outline 按鈕</fluent-button>
+                <fluent-button appearance="stealth">Stealth 按鈕</fluent-button>
+            </div>
+            <div class="row">
+                <fluent-button disabled>禁用按鈕</fluent-button>
+            </div>
+            <div class="row">
+                <fluent-badge appearance="accent">Accent 徽章</fluent-badge>
+                <fluent-badge appearance="neutral">Neutral 徽章</fluent-badge>
+                <fluent-badge fill="danger" color="white">自定義顏色徽章</fluent-badge>
+            </div>
+        </div>
+
+        <div class="component-section">
+            <h3>文字輸入 (Text Inputs)</h3>
+            <fluent-text-field placeholder="請輸入姓名...">單行文本框</fluent-text-field>
+            <fluent-text-field type="password" placeholder="請輸入密碼...">密碼框</fluent-text-field>
+            <fluent-text-area placeholder="請輸入詳細描述..." resize="both">多行文本區</fluent-text-area>
+        </div>
+
+        <div class="component-section">
+            <h3>選擇器與開關 (Toggles & Checkboxes)</h3>
+            <fluent-checkbox checked>已選中複選框</fluent-checkbox>
+            <fluent-checkbox>未選中複選框</fluent-checkbox>
+            
+            <fluent-switch checked>啟用功能</fluent-switch>
+            
+            <fluent-radio-group orientation="vertical">
+                <label slot="label">請選擇一個選項：</label>
+                <fluent-radio value="1" checked>選項一</fluent-radio>
+                <fluent-radio value="2">選項二</fluent-radio>
+                <fluent-radio value="3">選項三</fluent-radio>
+            </fluent-radio-group>
+        </div>
+
+        <div class="component-section">
+            <h3>滑塊與進度 (Sliders & Progress)</h3>
+            <label>音量調節</label>
+            <fluent-slider min="0" max="100" value="50">
+                <fluent-slider-label position="0">0</fluent-slider-label>
+                <fluent-slider-label position="50">50</fluent-slider-label>
+                <fluent-slider-label position="100">100</fluent-slider-label>
+            </fluent-slider>
+
+            <label>進度條 (確定)</label>
+            <fluent-progress value="45"></fluent-progress>
+            
+            <label>進度條 (不確定)</label>
+            <fluent-progress></fluent-progress>
+
+            <div class="row">
+                <fluent-progress-ring value="75"></fluent-progress-ring>
+                <fluent-progress-ring></fluent-progress-ring>
+            </div>
+        </div>
+
+        <div class="component-section">
+            <h3>下拉與菜單 (Select & Menus)</h3>
+            <fluent-select title="選擇一個城市">
+                <fluent-option value="taipei">台北</fluent-option>
+                <fluent-option value="tokyo">東京</fluent-option>
+                <fluent-option value="newyork">紐約</fluent-option>
+                <fluent-option value="london">倫敦</fluent-option>
+            </fluent-select>
+
+            <div style="border: 1px solid #ccc; border-radius: 4px; padding: 4px;">
+                <fluent-menu>
+                    <fluent-menu-item>新建文件</fluent-menu-item>
+                    <fluent-menu-item>打開...</fluent-menu-item>
+                    <fluent-menu-item disabled>保存</fluent-menu-item>
+                    <fluent-menu-item>退出</fluent-menu-item>
+                </fluent-menu>
+            </div>
+        </div>
+
+        <div class="component-section" style="grid-column: 1 / -1;">
+            <h3>導航與佈局 (Tabs & Accordion)</h3>
+            
+            <fluent-tabs activeid="tab-1">
+                <fluent-tab id="tab-1">個人信息</fluent-tab>
+                <fluent-tab id="tab-2">安全設置</fluent-tab>
+                <fluent-tab id="tab-3">通知偏好</fluent-tab>
+                
+                <fluent-tab-panel id="tabPanel-1">
+                    <p>這裡是個人信息面板的內容。</p>
+                </fluent-tab-panel>
+                <fluent-tab-panel id="tabPanel-2">
+                    <p>這裡是安全設置面板的內容，可以包含密碼修改等表單。</p>
+                </fluent-tab-panel>
+                <fluent-tab-panel id="tabPanel-3">
+                    <p>這裡是通知偏好面板的內容。</p>
+                </fluent-tab-panel>
+            </fluent-tabs>
+
+            <br>
+
+            <fluent-accordion>
+                <fluent-accordion-item expanded>
+                    <span slot="heading">什麼是 Fluent UI Web Components?</span>
+                    <div>它是一個基於 Web Components 標準的 UI 庫，可以在任何框架（React, Vue, Angular）或原生 JS 中使用。</div>
+                </fluent-accordion-item>
+                <fluent-accordion-item>
+                    <span slot="heading">如何自定義主題？</span>
+                    <div>你可以通過 Design Tokens（如 accent-fill-rest 等）輕鬆地在全局或局部修改顏色和間距。</div>
+                </fluent-accordion-item>
+            </fluent-accordion>
+        </div>
+
+        <div class="component-section">
+            <h3>樹狀結構 (Tree View)</h3>
+            <fluent-tree-view>
+                <fluent-tree-item expanded>
+                    📁 文檔
+                    <fluent-tree-item>📄 項目計劃.docx</fluent-tree-item>
+                    <fluent-tree-item>📄 需求分析.pdf</fluent-tree-item>
+                </fluent-tree-item>
+                <fluent-tree-item>
+                    📁 圖片
+                    <fluent-tree-item>🖼️ logo.png</fluent-tree-item>
+                </fluent-tree-item>
+            </fluent-tree-view>
+        </div>
+
+        <div class="component-section">
+            <h3>卡片 (Card)</h3>
+            <fluent-card style="padding: 1rem; width: 100%; box-sizing: border-box;">
+                <h2 style="margin-top: 0; font-size: 1.2rem;">Fluent 卡片標題</h2>
+                <p>卡片組件通常用於將相關聯的信息分組顯示。它內置了合適的陰影、圓角和背景色。</p>
+                <fluent-button appearance="accent">了解更多</fluent-button>
+            </fluent-card>
+        </div>
+
+    </div>
+</body>
+</html>

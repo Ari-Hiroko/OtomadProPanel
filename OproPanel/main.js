@@ -174,24 +174,47 @@ document.addEventListener("DOMContentLoaded", function () {
       csInterface.evalScript("$._PPP_.closeLog()");
    };
 })
+// function loadJsonNative() {
+//    var csInterface = new CSInterface();
+//    var result = window.cep.fs.showOpenDialog(false, false, "Select extracted_notes.json", "", ["json"]);
 
+//    if (result.err === 0 && result.data.length > 0) {
+//       var filePath = result.data[0];
+
+//       // 关键修复：同时转义反斜杠和双引号，防止拼接 evalScript 字符串时发生断裂
+//       var safePath = filePath.replace(/\\/g, "\\\\").replace(/"/g, "\\\"");
+
+//       // 调用放置在 $._PPP_ 命名空间下的函数
+//       csInterface.evalScript('$._PPP_.importJSONFromPath("' + safePath + '")');
+//    }
+// }
 function loadJsonNative() {
-   var csInterface = new CSInterface();
-   var result = window.cep.fs.showOpenDialog(
-      false,
-      false,
-      "选择 extracted_notes.json",
-      "",
-      ["json"]
-   );
-
-   if (result.err === 0 && result.data.length > 0) {
-      var filePath = result.data[0];
-      // 丢掉 replace 和手动拼接单双引号，直接传入
-      csInterface.evalScript("$._PPP_.importJSONFromPath(" + JSON.stringify(filePath) + ")");
-   }
+   var fileInput = document.getElementById('jsonFileInput');
+   
+   // 清空之前的选择记录，确保重复选择同一个文件时仍能触发 onchange 事件
+   fileInput.value = '';
+   
+   fileInput.onchange = function(event) {
+      var file = event.target.files[0];
+      if (!file) return;
+      
+      // CEP 环境下的 File 对象自带 .path 属性，直接获取系统绝对路径
+      var filePath = file.path;
+      
+      if (filePath) {
+         var csInterface = new CSInterface();
+         // 转义反斜杠和双引号，防止拼接 evalScript 字符串时断裂
+         var safePath = filePath.replace(/\\/g, "\\\\").replace(/"/g, "\\\"");
+         
+         csInterface.evalScript('$._PPP_.importJSONFromPath("' + safePath + '")');
+      } else {
+         alert("Error: 无法获取文件的本地路径。");
+      }
+   };
+   
+   // 模拟点击，唤起原生的文件选择窗口
+   fileInput.click();
 }
-
 function tieba() {
    // 獲取插件與 Adobe 宿主通信的接口
    var cs = new CSInterface();

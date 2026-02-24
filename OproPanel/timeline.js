@@ -7,6 +7,11 @@ const timelineData = [
       open: true, // true 表示默认展开，false 表示收起
       items: [
          {
+            version: "v0.05",
+            date: "2026/2/25",
+            content: "修了json功能，并且加了一个确认框，同时将native改成普通input"
+         },
+         {
             version: "v0.04",
             date: "2026/2/24",
             content: "byd，我修了一堆bug，终于把兼容改完了，现在至少2023和2024可以正常使用，我认为这值得单开一个版本号庆祝一下，因为累死我了"
@@ -109,14 +114,6 @@ document.addEventListener("DOMContentLoaded", function () {
       // 关键修改：只有当版本低于 25 且 当前页面不是 compat_index.html 时，才进行跳转
       if (majorVersion < 25 && !window.location.href.includes("compat_index.html")) {
          window.location.href = "compat_index.html";
-         // return; // 终止后续代码执行
       }
-   }
-   // --- 跳转结束 ---
 
-   const provider = document.querySelector("fluent-provider");
-   // 增加判断：因为 compat_index.html 中没有 fluent-provider，防止报错
-   if (provider) {
-      // ... 剩下的 updateTheme 逻辑 ... (如果有的话)
-   }
-});
+}});

@@ -8,12 +8,13 @@
    <script src="./lib/CSInterface.js"></script>
    <script src="./lib/jquery-1.9.1.js"></script>
    <script src="./ext.js"></script>
+   <script src="./lib/Vulcan.js"></script>
    <script type="module" src="web-components.js"></script>
    <script type="module" src="fluentplus.js"></script>
-   <script src="main.js"></script>
    <link id="ppstyle" href="css/style.css" rel="stylesheet" type="text/css" />
    <link rel="stylesheet" href="css/treefl.css">
 </head>
+<script src="main.js" defer></script>
 <script type="module">
    import { baseLayerLuminance, StandardLuminance } from "./web-components.js";
 
@@ -138,6 +139,8 @@
                   <fluent-button class="controlBg textStyle" onclick="loadJsonNative()">
                      读取 JSON
                   </fluent-button>
+                  <script>
+                  </script>
                   <fluent-button class="controlBg textStyle"
                      onClick="evalScript('$._PPP_.select1()')">从第一个序列开始选择</fluent-button>
                   <fluent-button class="controlBg textStyle"
@@ -463,7 +466,6 @@
             <script src="timeline.js"></script>
          </main>
    </fluent-provider>
-   <script src="main.js" defer></script>
 </body>
 
 </html>

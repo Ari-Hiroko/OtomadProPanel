@@ -3457,7 +3457,7 @@ $._PPP_ = {
             $._PPP_.updateEventPanel("No active sequence.");
         }
     },
-    
+
     selectCustomCycle: function(cycleLength, targetIndex) {
         var sequence = app.project.activeSequence;
         if (!sequence) return;
@@ -3927,14 +3927,69 @@ $._PPP_ = {
         }
     },
 
+    //  importJSONFromPath: function(filePath) {
+    //      try {
+    //          var activeSeq = app.project.activeSequence;
+    //          if (!activeSeq) {
+    //              alert("Error: No active sequence.");
+    //              return;
+    //          }
+
+    //          var itemToInsert = null;
+    //          var viewIDs = app.getProjectViewIDs();
+    //          if (viewIDs && viewIDs.length > 0) {
+    //              var selectedItems = app.getProjectViewSelection(viewIDs[0]);
+    //              if (selectedItems && selectedItems.length > 0) {
+    //                  itemToInsert = selectedItems[0];
+    //              }
+    //          }
+    //          if (!itemToInsert && app.project.rootItem.children.numItems > 0) {
+    //              itemToInsert = app.project.rootItem.children[0];
+    //          }
+    //          if (!itemToInsert || itemToInsert.type === 2) {
+    //              alert("Error: Please select a media item first.");
+    //              return;
+    //          }
+
+    //          var jsonFile = new File(filePath);
+    //          if (!jsonFile.exists) {
+    //              alert("Error: File not found at " + filePath);
+    //              return;
+    //          }
+
+    //          jsonFile.encoding = "UTF-8";
+    //          jsonFile.open("r");
+    //          var content = jsonFile.read();
+    //          jsonFile.close();
+
+    //          content = content.replace(/^\uFEFF/, '').replace(/^\s+|\s+$/g, '');
+    //          var notes = eval('(' + content + ')');
+
+    //          var targetVTrack = activeSeq.videoTracks[0];
+
+    //          for (var i = 0; i < notes.length; i++) {
+    //              var t = new Time();
+    //              t.seconds = parseFloat(notes[i].start_time);
+    //              targetVTrack.overwriteClip(itemToInsert, t);
+    //          }
+
+    //          alert("Success! Inserted " + notes.length + " clips.");
+
+    //      } catch (e) {
+    //          alert("JSX Error: " + e.message + " on line " + e.line);
+    //      }
+    //  },
+
+
     importJSONFromPath: function(filePath) {
         try {
             var activeSeq = app.project.activeSequence;
             if (!activeSeq) {
-                alert("Error: No active sequence.");
+                alert("Error: No active sequence selected. Please select a timeline.");
                 return;
             }
 
+            // 1. Identify the selected item in the Project Panel
             var itemToInsert = null;
             var viewIDs = app.getProjectViewIDs();
             if (viewIDs && viewIDs.length > 0) {
@@ -3943,41 +3998,55 @@ $._PPP_ = {
                     itemToInsert = selectedItems[0];
                 }
             }
-            if (!itemToInsert && app.project.rootItem.children.numItems > 0) {
-                itemToInsert = app.project.rootItem.children[0];
-            }
+
+            // Ensure a valid media item (not a bin) is selected
             if (!itemToInsert || itemToInsert.type === 2) {
-                alert("Error: Please select a media item first.");
+                alert("Error: Please select a valid media item in the Project Panel (folders/bins are not allowed).");
                 return;
             }
 
+            // 2. Read and parse the JSON file
             var jsonFile = new File(filePath);
             if (!jsonFile.exists) {
                 alert("Error: File not found at " + filePath);
                 return;
             }
-
+            
             jsonFile.encoding = "UTF-8";
             jsonFile.open("r");
             var content = jsonFile.read();
             jsonFile.close();
 
+            // Clean up BOM and whitespace before parsing
             content = content.replace(/^\uFEFF/, '').replace(/^\s+|\s+$/g, '');
             var notes = eval('(' + content + ')');
 
-            var targetVTrack = activeSeq.videoTracks[0];
-
-            for (var i = 0; i < notes.length; i++) {
-                var t = new Time();
-                t.seconds = parseFloat(notes[i].start_time);
-                targetVTrack.overwriteClip(itemToInsert, t);
+            var confirmMsg = "Confirm action:\n\nInsert [" + itemToInsert.name + "] " + notes.length + " times?";
+            if (!confirm(confirmMsg, false, "YTPMV Insertion Confirm")) {
+                return; 
             }
 
-            alert("Success! Inserted " + notes.length + " clips.");
+            // 3. Target the top video track to avoid overwriting existing V1 media
+            var topTrackIndex = activeSeq.videoTracks.numTracks - 1;
+            var targetVTrack = activeSeq.videoTracks[topTrackIndex];
+
+            // 4. Use absolute Ticks for frame-perfect accuracy (1 sec = 254016000000 ticks)
+            var TICKS_PER_SECOND = 254016000000;
+
+            for (var i = 0; i < notes.length; i++) {
+                var startTimeSec = parseFloat(notes[i].start_time);
+                
+                if (!isNaN(startTimeSec)) {
+                    // Convert to exact ticks and cast to String to prevent Premiere crashes
+                    var exactTicks = String(Math.round(startTimeSec * TICKS_PER_SECOND));
+                    targetVTrack.overwriteClip(itemToInsert, exactTicks);
+                }
+            }
+
+            alert("Success! Inserted " + notes.length + " clips to the top track.");
 
         } catch (e) {
-            alert("JSX Error: " + e.message + " on line " + e.line);
+            alert("JSX Error: " + e.message + " (Line " + e.line + ")");
         }
-    },
-
+    }
 };

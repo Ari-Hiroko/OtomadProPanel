@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fluent Timeline Example</title>
+    <link rel="stylesheet" href="/css/tree.css">
+    <style>
+        body {
+            font-family: 'Segoe UI', "Microsoft YaHei", sans-serif;
+            background-color: #f3f3f3; /* 浅灰色背景衬托白色卡片 */
+            padding: 20px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="fluent-timeline">
+
+    <div class="timeline-year-header fade-in">
+        📅 2026
+    </div>
+
+    <div class="timeline-item">
+        <div class="timeline-marker"></div>
+        <div class="timeline-content card-entrance">
+            <div class="timeline-meta">
+                <span class="version-badge">v0.03</span>
+                <span class="date">2026/2/24</span>
+            </div>
+            <div class="timeline-body">
+                <p>🗒️ 增加自由选择函数、（主要由@SHBRX）紧急更新PR2024以下兼容版本、优化选择函数方法。</p>
+                <p style="color: #666; font-size: 0.9em; margin-top: 8px;">（长文本测试：这段话是为了展示当内容很长的时候，这个时间轴组件能够非常自然地进行换行显示，而不会像之前的树形组件那样跑出屏幕边界。）</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="timeline-item">
+        <div class="timeline-marker"></div>
+        <div class="timeline-content card-entrance" style="animation-delay: 0.1s;">
+            <div class="timeline-meta">
+                <span class="version-badge">v0.02</span>
+                <span class="date">2026/2/24</span>
+            </div>
+            <div class="timeline-body">
+                <p>🗒️ 增加大量广告、界面升级为 Fluent UI 设计风格。</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="timeline-item">
+        <div class="timeline-marker"></div>
+        <div class="timeline-content card-entrance" style="animation-delay: 0.2s;">
+            <div class="timeline-meta">
+                <span class="version-badge">v0.01</span>
+                <span class="date">2026/2/20</span>
+            </div>
+            <div class="timeline-body">
+                <p>📄 第一版本发布。</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="timeline-year-header fade-in" style="animation-delay: 0.3s; margin-top: 30px;">
+        📅 2025
+    </div>
+
+    <div class="timeline-item last-item">
+        <div class="timeline-marker"></div>
+        <div class="timeline-content card-entrance" style="animation-delay: 0.4s;">
+            <div class="timeline-meta">
+                <span class="version-badge">预览版</span>
+                <span class="date">2025/3</span>
+            </div>
+            <div class="timeline-body">
+                 <p>🗒️ 早期预览版，实现左右抽屉功能。</p>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+</body>
+</html>

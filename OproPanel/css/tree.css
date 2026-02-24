@@ -1,0 +1,156 @@
+/* --- Fluent UI Color Variables --- */
+:root {
+    --fluent-blue: #0078d4;
+    --fluent-blue-hover: #006cbd;
+    --neutral-gray: #e1dfdd;
+    --text-primary: #323130;
+    --text-secondary: #605e5c;
+    --card-shadow: 0 1.6px 3.6px 0 rgba(0,0,0,0.132), 0 0.3px 0.9px 0 rgba(0,0,0,0.108);
+}
+
+/* --- Timeline Container --- */
+.fluent-timeline {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px 0;
+    position: relative;
+}
+
+/* --- Year Header --- */
+.timeline-year-header {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: var(--fluent-blue);
+    margin-bottom: 16px;
+    padding-left: 36px; /* Align with content */
+}
+
+/* --- Timeline Item Wrapper --- */
+.timeline-item {
+    position: relative;
+    padding-left: 36px; /* Make space for marker and line */
+    margin-bottom: 24px; /* Space between cards */
+    /* Ensure connection line is drawn */
+}
+
+/* The Connecting Line */
+.timeline-item::before {
+    content: '';
+    position: absolute;
+    left: 9px; /* Center within the marker area */
+    top: 20px; /* Start below the marker */
+    width: 2px;
+    height: calc(100% + 24px); /* Connect to next item */
+    background-color: var(--neutral-gray);
+    z-index: 0;
+}
+
+/* Hide line for the very last item */
+.timeline-item.last-item::before {
+    display: none;
+}
+
+
+/* --- The Dot/Marker --- */
+.timeline-marker {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background-color: white;
+    border: 3px solid var(--fluent-blue);
+    z-index: 1;
+    box-sizing: border-box;
+    box-shadow: 0 0 0 2px white; /* Small ring to separate from line */
+}
+
+/* --- The Content Card --- */
+.timeline-content {
+    background: white;
+    border-radius: 4px; /* Fluent rounded corners */
+    padding: 16px;
+    box-shadow: var(--card-shadow);
+    border: 1px solid transparent;
+    transition: all 0.2s ease-in-out;
+}
+
+/* Hover effect on card */
+.timeline-content:hover {
+    box-shadow: 0 3.2px 7.2px 0 rgba(0,0,0,0.132), 0 0.6px 1.8px 0 rgba(0,0,0,0.108); /* Deeper shadow */
+    border-color: var(--neutral-gray);
+}
+
+/* Metadata Section (Version & Date) */
+.timeline-meta {
+    display: flex;
+    align-items: center;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.version-badge {
+    background-color: #eff6fc; /* Light blue background */
+    color: var(--fluent-blue);
+    font-weight: 600;
+    font-size: 0.85rem;
+    padding: 2px 8px;
+    border-radius: 12px;
+}
+
+.date {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+/* Body Text */
+.timeline-body p {
+    margin: 0 0 8px 0;
+    color: var(--text-primary);
+    line-height: 1.6;
+    /* KEY: Ensure text wraps normally */
+    white-space: normal;
+    word-wrap: break-word;
+}
+.timeline-body p:last-child {
+    margin-bottom: 0;
+}
+
+/* --- Animations --- */
+
+/* Keyframes for sliding up and fading in */
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translate3d(0, 20px, 0);
+    }
+    to {
+        opacity: 1;
+        transform: translate3d(0, 0, 0);
+    }
+}
+
+/* Simple Fade In */
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* Apply animations */
+/* Initialize hidden to avoid flash before animation starts */
+.card-entrance, .fade-in {
+    opacity: 0; 
+    animation-duration: 0.5s;
+    animation-fill-mode: both; /* Keep the state after animation ends */
+    animation-timing-function: cubic-bezier(0.1, 0.9, 0.2, 1); /* Fluent-like easing */
+}
+
+.card-entrance {
+    animation-name: fadeInUp;
+}
+
+.fade-in {
+    animation-name: fadeIn;
+}

@@ -1,0 +1,572 @@
+<!doctype html>
+<html>
+<title>顺飞面板青春版</title>
+
+<head>
+   <meta charset="utf-8">
+   <script src="./ext.js"></script>
+   <script src="./lib/CSInterface.js"></script>
+   <script src="./lib/jquery-1.9.1.js"></script>
+   <script src="./lib/Vulcan.js"></script>
+   <script src="./main.js"></script>
+   <style>
+      body {
+         font-family: Arial, sans-serif;
+         background-color: #2b2b2b;
+         color: #ffffff;
+         margin: 0;
+         padding: 20px;
+      }
+
+      .container {
+         max-width: 1000px;
+         margin: 0 auto;
+         background-color: #333;
+         padding: 20px;
+         border-radius: 8px;
+         box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+      }
+
+      .header {
+         text-align: center;
+         margin-bottom: 20px;
+         padding-bottom: 10px;
+         border-bottom: 1px solid #555;
+      }
+
+      .card {
+         background-color: #2b2b2b;
+         border: 1px solid #444;
+         border-radius: 4px;
+         padding: 16px;
+         margin-bottom: 16px;
+         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+      }
+
+      .card-header {
+         margin-bottom: 12px;
+      }
+
+      .card-header h2 {
+         margin: 0 0 8px 0;
+         font-size: 1.25rem;
+         font-weight: 600;
+      }
+
+      .card-header p {
+         font-size: 0.85rem;
+         margin: 0;
+         opacity: 0.8;
+      }
+
+      .card-content {
+         display: flex;
+         flex-direction: column;
+         gap: 12px;
+      }
+
+      .button-group {
+         display: flex;
+         flex-wrap: wrap;
+         gap: 8px;
+      }
+
+      .controlBg {
+         background-color: #444;
+         color: white;
+         border: 1px solid #666;
+         padding: 8px 12px;
+         border-radius: 4px;
+         cursor: pointer;
+         font-size: 14px;
+         transition: background-color 0.2s;
+      }
+
+      .controlBg:hover {
+         background-color: #555;
+      }
+
+      .select-style {
+         width: 100%;
+         padding: 8px 10px;
+         background-color: #333;
+         color: #fff;
+         border: 1px solid #555;
+         border-radius: 4px;
+         font-size: 14px;
+         box-sizing: border-box;
+      }
+
+      .input-style {
+         width: 100%;
+         padding: 8px 10px;
+         background-color: #333;
+         color: #fff;
+         border: 1px solid #555;
+         border-radius: 4px;
+         font-size: 14px;
+         box-sizing: border-box;
+      }
+
+      .info-block {
+         margin: 10px 0;
+      }
+
+      .info-block p {
+         margin: 5px 0;
+         font-size: 14px;
+      }
+
+      .action-block {
+         display: flex;
+         align-items: center;
+         gap: 12px;
+      }
+
+      .avatar {
+         width: 64px;
+         height: 64px;
+         border-radius: 50%;
+         background-color: #555;
+         display: flex;
+         align-items: center;
+         justify-content: center;
+         font-size: 24px;
+      }
+
+      .floating {
+         display: flex;
+         flex-direction: row;
+         justify-content: space-between;
+         align-items: center;
+      }
+
+      .droppable {
+         padding: 10px;
+         border: 2px dashed #666;
+         text-align: center;
+         margin-top: 10px;
+      }
+
+      .author {
+         display: flex;
+         text-align: end;
+         align-items: flex-end;
+         align-content: space-between;
+         flex-direction: column;
+         margin-right: .15rem;
+      }
+
+      #fCD {
+         margin-top: 1rem;
+      }
+
+      .author-links {
+         display: flex;
+         /* 强制内部元素并排 */
+         flex-direction: row;
+         /* 横向排列 */
+         gap: 15px;
+         /* 链接之间的间距 */
+         margin-top: 5px;
+      }
+
+      .author-links a {
+         font-size: 13px;
+         color: #0078d4;
+         text-decoration: none;
+      }
+
+      /* 鼠标悬停效果，增加交互感 */
+      .author-links a:hover {
+         text-decoration: dotted;
+         color: #b1e0ff;
+         transition: color 0.2s ease;
+         ;
+      }
+   </style>
+</head>
+
+<body onLoad="onLoaded()">
+   <div class="container">
+      <div class="header">
+         <div class="floating">
+            <div class="action-block">
+               <img alt="Latias" src="./lib/Latia.png" width="64" height="64">
+            </div>
+            <div class="author">
+               <p style="font-size: small; margin: 4px 0;">兼容UI by SHBRX；程序 by EllAri</p>
+               <div class="author-links">
+                  <a href="./index.html">回到新版</a>
+                  <a href="javascript:history.go(0)">刷新面板</a>
+               </div>
+            </div>
+         </div>
+      </div>
+
+      <div class="info-block">
+         <p><b>用户:</b> <span id="username">[未初始化]</span></p>
+         <p><b>版本:</b> <span id="version_string">[未初始化]</span></p>
+         <p><b>当前序列:</b> <span id="active_seq">[未初始化]</span></p>
+      </div>
+   </div>
+
+   <div class="card" id="fCD">
+      <div class="card-header">
+         <h2>YTPMV 操作</h2>
+         <p style="font-size: small">因为我喜欢YTPMV，所以我叫它YTPMV操作</p>
+      </div>
+      <div class="card-content">
+         <input type="file" id="jsonFileInput" accept=".json" style="display: none;" />
+
+         <div class="button-group">
+            <button class="controlBg" onclick="loadJsonNative()">读取 JSON</button>
+            <button class="controlBg" onClick="evalScript('$._PPP_.select1()')">从第一个序列开始选择</button>
+            <button class="controlBg" onClick="evalScript('$._PPP_.select2()')">从第二个序列开始选择</button>
+            <button class="controlBg" onclick="tieba()">关注Mizzle吧谢谢喵</button>
+         </div>
+      </div>
+   </div>
+
+   <div class="card">
+      <div class="card-header">
+         <h2>自由选择</h2>
+         <p style="font-size: small; margin-top: 0;">我爱自由</p>
+      </div>
+      <div class="card-content" id="FrS">
+         <div style="display: flex; flex-direction: column; gap: 4px;">
+            <label for="cycleLengthSelect" style="font-size: 12px; font-weight: 500; opacity: 0.9;">几次循环 (Cycle
+               Length)</label>
+            <select id="cycleLengthSelect" class="select-style">
+               <option value="" disabled selected>选择循环次数</option>
+               <option value="1">1</option>
+               <option value="2">2</option>
+               <option value="3">3</option>
+               <option value="4">4</option>
+               <option value="5">5</option>
+               <option value="6">6</option>
+               <option value="7">7</option>
+               <option value="8">8</option>
+               <option value="9">9</option>
+               <option value="10">10</option>
+            </select>
+         </div>
+
+         <div style="display: flex; flex-direction: column; gap: 4px;">
+            <label for="targetIndexSelect" style="font-size: 12px; font-weight: 500; opacity: 0.9;">目标索引 (Target
+               Index)</label>
+            <select id="targetIndexSelect" class="select-style">
+               <option value="" disabled selected>选择目标索引</option>
+               <option value="1">1</option>
+               <option value="2">2</option>
+               <option value="3">3</option>
+               <option value="4">4</option>
+               <option value="5">5</option>
+               <option value="6">6</option>
+               <option value="7">7</option>
+               <option value="8">8</option>
+               <option value="9">9</option>
+               <option value="10">10</option>
+            </select>
+         </div>
+
+         <button id="btn_PPRO_Sel" class="controlBg"
+            style="background-color: #0078d4; color: #ffffff; padding: 10px 16px; font-weight: 600;"
+            onmouseover="this.style.backgroundColor='#106ebe'" onmouseout="this.style.backgroundColor='#0078d4'"
+            onClick="executeFreeSelect()">
+            选择
+         </button>
+      </div>
+   </div>
+
+   <div class="card">
+      <div class="card-header">
+         <h2>22-23 新增功能!</h2>
+      </div>
+      <div class="card-content">
+         <div class="button-group">
+            <button class="controlBg" id="btn_PPRO87" onClick="evalScript('$._PPP_.importSrtAddToCaptionTrack()')">导入
+               .srt 字幕文件并添加到新的字幕轨道</button>
+            <button class="controlBg" id="btn_PPRO84"
+               onClick="evalScript('$._PPP_.enableAllDisabledClips()')">启用序列中所有禁用的剪辑</button>
+            <button class="controlBg" id="btn_PPRO85"
+               onClick="evalScript('$._PPP_.showColorspaceInEvents()')">在事件中显示剪辑色彩空间</button>
+            <button class="controlBg" id="btn_PPRO86"
+               onClick="evalScript('$._PPP_.moveTrackItemOnTimeline()')">在时间轴上移动剪辑13秒</button>
+         </div>
+      </div>
+   </div>
+
+   <div class="card">
+      <div class="card-header">
+         <h2>14.3.1 新增功能!</h2>
+      </div>
+      <div class="card-content">
+         <div class="button-group">
+            <button class="controlBg" id="btn_PPRO81"
+               onClick="evalScript('$._PPP_.performSceneEditDetectionOnSelection()')">在当前序列中检测剪辑</button>
+         </div>
+      </div>
+   </div>
+
+   <div class="card">
+      <div class="card-header">
+         <h2>14.1 新增功能!</h2>
+      </div>
+      <div class="card-content">
+         <div class="button-group">
+            <button class="controlBg" id="btn_PPRO77" onClick="evalScript('$._PPP_.openProduction()')">打开制作</button>
+            <button class="controlBg" id="btn_PPRO78"
+               onClick="evalScript('$._PPP_.toggleProductionLockState()')">切换制作锁定状态</button>
+            <button class="controlBg" id="btn_PPRO79"
+               onClick="evalScript('$._PPP_.closeAllOpenProductionProjects()')">关闭所有打开的制作项目</button>
+            <button class="controlBg" id="btn_PPRO80"
+               onClick="evalScript('$._PPP_.moveProductionProjectsToTrash()')">将所有打开的制作项目移动到回收站</button>
+            <button class="controlBg" id="btn_PPRO82"
+               onClick="evalScript('$._PPP_.newSequenceFromProjectSelection()')">从所选项目创建序列</button>
+            <button class="controlBg" id="btn_PPRO83"
+               onClick="evalScript('$._PPP_.adjustGraphicsWhiteLuminance()')">调整图形白色亮度</button>
+         </div>
+      </div>
+   </div>
+
+   <div class="card">
+      <div class="card-header">
+         <h2>14.0 新增功能!</h2>
+      </div>
+      <div class="card-content">
+         <div class="button-group">
+            <button class="controlBg" id="btn_PPRO76" onClick="evalScript('$._PPP_.createNewProject()')">创建新项目</button>
+            <button class="controlBg" id="btn_PPRO72"
+               onClick="evalScript('$._PPP_.generateSystemCompatibilityReport()')">生成系统兼容性报告</button>
+            <button class="controlBg" id="btn_PPRO75"
+               onClick="evalScript('$._PPP_.changeSequenceColorSpace()')">更改当前序列的色彩空间</button>
+         </div>
+      </div>
+   </div>
+
+   <div class="card">
+      <div class="card-header">
+         <h2>13.1 新增功能!</h2>
+      </div>
+      <div class="card-content">
+         <div class="button-group">
+            <button class="controlBg" id="btn_PPRO57"
+               onClick="evalScript('$._PPP_.closeAllProjectsOtherThanActiveProject()')">关闭除当前项目外的所有项目</button>
+            <button class="controlBg" id="btn_PPRO58"
+               onClick="evalScript('$._PPP_.findAllAdjustmentLayersInProject()')">查找所有调整图层</button>
+            <button class="controlBg" id="btn_PPRO59"
+               onClick="evalScript('$._PPP_.consolidateDuplicates()')">合并重复的素材</button>
+            <button class="controlBg" id="btn_PPRO60"
+               onClick="evalScript('$._PPP_.closeAllSequences()')">关闭所有序列</button>
+            <button class="controlBg" id="btn_PPRO62"
+               onClick="evalScript('$._PPP_.reportSequenceVRSettings()')">报告序列VR设置</button>
+            <button class="controlBg" id="btn_PPRO63"
+               onClick="evalScript('$._PPP_.openProjectItemInSource()')">在源监视器中打开所选项目</button>
+            <button class="controlBg" id="btn_PPRO64"
+               onClick="evalScript('$._PPP_.reinterpretFootage()')">重新解释所选项目</button>
+            <button class="controlBg" id="btn_PPRO66" onClick="evalScript('$._PPP_.createSubSequence()')">创建子序列</button>
+            <button class="controlBg" id="btn_PPRO67"
+               onClick="evalScript('$._PPP_.selectAllRetimedClips()')">选择所有重置时间的剪辑</button>
+            <button class="controlBg" id="btn_PPRO68"
+               onClick="evalScript('$._PPP_.selectReversedClips()')">选择所有反向的剪辑</button>
+            <button class="controlBg" id="btn_PPRO69"
+               onClick="evalScript('$._PPP_.logConsoleOutput()')">将控制台输出写入日志文件</button>
+            <button class="controlBg" id="btn_PPRO70" onClick="evalScript('$._PPP_.setWorkspace()')">设置当前工作区</button>
+            <button class="controlBg" id="stitchusingdefaultpreset">在AME中拼接所选文件</button>
+         </div>
+      </div>
+   </div>
+
+   <div class="card">
+      <div class="card-header">
+         <h2>系统</h2>
+      </div>
+      <div class="card-content">
+         <div class="button-group">
+            <button class="controlBg" id="btn_PPRO33"
+               onClick="evalScript('$._PPP_.closeFrontSourceClip()')">关闭最前方的源监视器剪辑</button>
+            <button class="controlBg" id="btn_PPRO35"
+               onClick="evalScript('$._PPP_.closeAllClipsInSourceMonitor()')">关闭源监视器中的所有剪辑</button>
+            <button class="controlBg" id="openfolder">打开 PProPanel 文件夹</button>
+            <button class="controlBg" id="openlogfilefolder">打开 Premiere Pro 的日志文件夹</button>
+            <button class="controlBg" id="btn_PPRO7" onClick="evalScript('$._PPP_.pokeAnywhere()')">检测 Anywhere
+               服务器</button>
+            <button class="controlBg" id="btn_PPRO71"
+               onClick="evalScript('$._PPP_.enumerateTeamProjects()')">识别打开的团队项目</button>
+            <button class="controlBg" id="checkforums">查看 SDK 论坛</button>
+            <button class="controlBg" id="readAPIdocs">阅读 API 文档</button>
+            <button class="controlBg" id="copypresets">复制预设</button>
+            <button class="controlBg" id="btn_PPRO18" onClick="evalScript('$._PPP_.getnumAEProjectItems()')">AE
+               项目项目计数</button>
+            <button class="controlBg" id="btn_PPRO49"
+               onClick="evalScript('$._PPP_.turnOffStartDialog()')">关闭启动对话框</button>
+            <button class="controlBg" id="btn_PPRO25" onClick="evalScript('$._PPP_.clearCache()')">清除媒体缓存</button>
+            <button class="controlBg" id="btn_PPRO61"
+               onClick="evalScript('$._PPP_.dumpAllPresets()')">列出可用的导出预设</button>
+         </div>
+      </div>
+   </div>
+
+   <div class="card">
+      <div class="card-header">
+         <h2>导入与创建</h2>
+      </div>
+      <div class="card-content">
+         <div class="button-group">
+            <button class="controlBg" id="ingest">摄取文件, 创建代理</button>
+            <button class="controlBg" id="btn_PPRO42" onClick="evalScript('$._PPP_.importMoGRT()')">导入 MoGRT</button>
+            <button class="controlBg" id="btn_PPRO2" onClick="evalScript('$._PPP_.createSequence()')">创建序列</button>
+            <button class="controlBg" id="btn_PPRO37" onClick="evalScript('$._PPP_.importComps()')">从 AE 项目导入合成</button>
+            <button class="controlBg" id="newseqfrompreset">从预设创建序列</button>
+            <button class="controlBg" id="btn_PPRO3" onClick="evalScript('$._PPP_.openProject()')">打开不同的项目</button>
+            <button class="controlBg" id="btn_PPRO5" onClick="evalScript('$._PPP_.importFiles()')">导入文件</button>
+            <button class="controlBg" id="btn_PPRO8" onClick="evalScript('$._PPP_.openInSource()')">在源监视器中打开...</button>
+            <button class="controlBg" id="btn_PPRO24" onClick="evalScript('$._PPP_.setProxiesON()')">为第一个项目添加代理</button>
+         </div>
+         <div id="dragthing" draggable="true" ondragstart="dragHandler(event)" class="droppable">
+            拖放导入
+         </div>
+      </div>
+   </div>
+
+   <div class="card">
+      <div class="card-header">
+         <h2>元数据和项目操作</h2>
+      </div>
+      <div class="card-content">
+         <div class="button-group">
+            <button class="controlBg" id="toggleproxy">切换当前项目中的代理</button>
+            <button class="controlBg" id="btn_PPRO9" onClick="evalScript('$._PPP_.replaceMedia()')">替换媒体...</button>
+            <button class="controlBg" id="btn_PPRO10"
+               onClick="evalScript('$._PPP_.createSequenceMarkers()')">添加序列标记</button>
+            <button class="controlBg" id="btn_PPRO16" onClick="evalScript('$._PPP_.addClipMarkers()')">添加剪辑标记</button>
+            <button class="controlBg" id="btn_PPRO17" onClick="evalScript('$._PPP_.updatePAR()')">更新 PAR</button>
+            <button class="controlBg" id="btn_PPRO11" onClick="evalScript('$._PPP_.mungeXMP()')">操作 XMP</button>
+            <button class="controlBg" id="btn_PPRO14"
+               onClick="evalScript('$._PPP_.updateAllProjectItems()')">更新所有媒体</button>
+            <button class="controlBg" id="btn_PPRO15"
+               onClick="evalScript('$._PPP_.modifyProjectMetadata()')">修改项目元数据</button>
+            <button class="controlBg" id="btn_PPRO23" onClick="evalScript('$._PPP_.setScratchDisk()')">设置暂存盘路径</button>
+            <button class="controlBg" id="btn_PPRO27"
+               onClick="evalScript('$._PPP_.randomizeSequenceSelection()')">随机选择序列</button>
+            <button class="controlBg" id="btn_PPRO28" onClick="evalScript('$._PPP_.muteFun()')">静音的乐趣!</button>
+            <button class="controlBg" id="btn_PPRO29"
+               onClick="evalScript('$._PPP_.onPlayWithKeyframes()')">操作关键帧</button>
+            <button class="controlBg" id="btn_PPRO30"
+               onClick="evalScript('$._PPP_.insertOrAppend()')">插入或附加到活动序列</button>
+            <button class="controlBg" id="btn_PPRO56"
+               onClick="evalScript('$._PPP_.insertOrAppendToTopTracks()')">插入或附加到顶部轨道</button>
+            <button class="controlBg" id="btn_PPRO31" onClick="evalScript('$._PPP_.overWrite()')">在 CTI 位置覆盖</button>
+            <button class="controlBg" id="btn_PPRO36" onClick="evalScript('$._PPP_.changeLabel()')">标记第一个项目</button>
+            <button class="controlBg" id="btn_PPRO21" onClick="evalScript('$._PPP_.addSubClip()')">创建子剪辑</button>
+            <button class="controlBg" id="btn_PPRO44"
+               onClick="evalScript('$._PPP_.reportCurrentProjectSelection()')">向事件面板报告选择</button>
+            <button class="controlBg" id="btn_PPRO43"
+               onClick="evalScript('$._PPP_.randomizeProjectSelection()')">随机选择项目</button>
+            <button class="controlBg" id="btn_PPRO45" onClick="evalScript('$._PPP_.setOffline()')">使所选项目离线</button>
+            <button class="controlBg" id="btn_PPRO47" onClick="evalScript('$._PPP_.setAllOnline()')">使所有离线项目在线</button>
+            <button class="controlBg" id="btn_PPRO48" onClick="evalScript('$._PPP_.updateFrameRate()')">更新帧率</button>
+            <button class="controlBg" id="btn_PPRO50"
+               onClick="evalScript('$._PPP_.changeMarkerColors()')">更改标记颜色</button>
+            <button class="controlBg" id="btn_PPRO52"
+               onClick="evalScript('$._PPP_.changeSeqTimeCodeDisplay()')">更改序列时间码显示</button>
+            <button class="controlBg" id="btn_PPRO32"
+               onClick="evalScript('$._PPP_.saveCurrentProjectLayout()')">保存项目布局</button>
+            <button class="controlBg" id="btn_PPRO51"
+               onClick="evalScript('$._PPP_.setProjectPanelMeta()')">加载项目布局</button>
+            <button class="controlBg" id="btn_PPRO12"
+               onClick="evalScript('$._PPP_.exportSequenceAsPrProj()')">从序列新建项目</button>
+            <button class="controlBg" id="btn_PPRO73"
+               onClick="evalScript('$._PPP_.autoReframeActiveSequence()')">自动重构当前序列</button>
+         </div>
+      </div>
+   </div>
+
+   <div class="card">
+      <div class="card-header">
+         <h2>导出</h2>
+      </div>
+      <div class="card-content">
+         <div class="button-group">
+            <button class="controlBg" id="transcodeusingdefaultpreset">转码第一个项目</button>
+            <button class="controlBg" id="transcodeexternal">转码外部文件</button>
+            <button class="controlBg" id="saveaspng">将序列帧另存为 .png</button>
+            <button class="controlBg" id="btn_PPRO41"
+               onClick="evalScript('$._PPP_.consolidateProject()')">合并与传输项目</button>
+            <button class="controlBg" id="btn_PPRO20"
+               onClick="evalScript('$._PPP_.dumpXMPFromAllProjectItems()')">从所有项目转储 XMP</button>
+            <button class="controlBg" id="btn_PPRO34"
+               onClick="evalScript('$._PPP_.saveProjectCopy()')">保存项目副本...</button>
+            <button class="controlBg" id="btn_PPRO4" onClick="evalScript('$._PPP_.saveProject()')">保存项目</button>
+            <button class="controlBg" id="btn_PPRO26"
+               onClick="evalScript('$._PPP_.exportFramesForMarkers()')">为标记导出帧</button>
+            <button class="controlBg" id="btn_PPRO6" onClick="evalScript('$._PPP_.exportFCPXML()')">导出 FCP XML</button>
+            <button class="controlBg" id="btn_PPRO22" onClick="evalScript('$._PPP_.exportAAF()')">将序列导出为 AAF</button>
+            <button class="controlBg" id="renderusingdefaultpreset">在 AME 中渲染当前序列</button>
+         </div>
+      </div>
+   </div>
+
+   <div class="card">
+      <div class="card-header">
+         <h2>哦对了</h2>
+      </div>
+      <div class="card-content">
+         <div class="button-group">
+            <button class="controlBg" id="web_PPro_B"
+               onClick="openExternalSite('https://github.com/Adobe-CEP/Samples/tree/master/PProPanel/', '基于此项目的改造')">PProPanel</button>
+            <button class="controlBg" id="web_Git_B"
+               onClick="openExternalSite('https://ari-hiroko.github.io/', '踩踩背')">神秘GitHub主页</button>
+            <button class="controlBg" id="web_OPro_B"
+               onClick="openExternalSite('https://github.com/Ari-Hiroko/OtomadProPanel', '发布地址')">此项目地址</button>
+            <button class="controlBg" id="web_EV_B"
+               onClick="openExternalSite('https://ari-hiroko.github.io/subpages/video/VID%20TEST/nav.html/', '神秘视频网站')">逸站</button>
+            <button class="controlBg" id="web_B_B"
+               onClick="openExternalSite('https://space.bilibili.com/344276085/', '粉丝最多的账号')">B站主页</button>
+            <button class="controlBg" id="web_Flu_B"
+               onClick="openExternalSite('https://github.com/microsoft/fluentui/', 'Fluent UI GitHub')">Fluent
+               UI</button>
+            <button class="controlBg" id="web_Ge_B"
+               onClick="openExternalSite('https://gemini.google.com/', '我就喜欢玩这个')">Gemini</button>
+         </div>
+      </div>
+   </div>
+
+   <div class="card">
+      <div class="card-header">
+         <h2>更新内容 - 2026/2/24</h2>
+      </div>
+      <div class="card-content">
+         <p>添加了一堆广告。</p>
+         <button class="controlBg" style="background-color: #34bfd1;" onClick="alert('艾雅米诺')">👎差评</button>
+      </div>
+   </div>
+   </div>
+   <script>
+      function executeFreeSelect() {
+         var cycleLength = document.getElementById('cycleLengthSelect').value;
+         var targetIndex = document.getElementById('targetIndexSelect').value;
+
+         if (!cycleLength || !targetIndex) {
+            alert("请先选择循环次数和目标索引！");
+            return;
+         }
+
+         var jsxCommand = "$._PPP_.selectCustomCycle(" + Number(cycleLength) + ", " + Number(targetIndex) + ")";
+
+         if (window.__adobe_cep__) {
+            var csInterface = new CSInterface();
+            csInterface.evalScript(jsxCommand, function (result) {
+               console.log("ExtendScript 执行完毕，返回值: ", result);
+            });
+         } else {
+            console.log("即将发送给宿主的脚本: ", jsxCommand);
+            alert("当前不在 Premiere 环境中，脚本命令已打印到控制台: \n" + jsxCommand);
+         }
+      }
+   </script>
+   
+</body>
+
+</html>

@@ -1,0 +1,210 @@
+/*************************************************************************
+* ADOBE CONFIDENTIAL
+* ___________________
+*
+* Copyright 2014 Adobe
+* All Rights Reserved.
+*
+* NOTICE: Adobe permits you to use, modify, and distribute this file in
+* accordance with the terms of the Adobe license agreement accompanying
+* it. If you have received this file from a source other than Adobe,
+* then your use, modification, or distribution of it requires the prior
+* written permission of Adobe. 
+**************************************************************************/
+
+* {
+
+}
+
+p {
+	text-align:center;
+}
+
+a {
+        color: #8080ff;
+}
+
+button
+{
+}
+
+input[type=text]
+{
+	height:12px;
+}
+
+#content {
+	margin-right:auto;
+	margin-left:auto;
+	vertical-align:middle;
+	width:100%;
+}
+
+#content ul {
+	padding:0px;
+}
+
+#content ul li {
+	margin:3px 0px 3px 0px;
+}
+/* compat_style.css - 经典稳重风格深色主题 */
+
+/* --- 基础设定 --- */
+body, html {
+    margin: 0;
+    padding: 0;
+    background-color: #262626; /* PR 标准深灰背景 */
+    color: #d9d9d9; /* 柔和的浅灰文字，避免刺眼 */
+    font-family: "Segoe UI", Arial, sans-serif; /* 经典无衬线字体 */
+    font-size: 14px;
+    height: 100%;
+    box-sizing: border-box;
+}
+
+/* 主容器：提供内边距，防止内容贴边 */
+div {
+    padding: 20px;
+    max-width: 400px; /* 限制最大宽度，防止在大屏上拉得太长 */
+    margin: 0 auto;   /* 居中显示 */
+}
+
+/* --- 排版 --- */
+h3 {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase; /* 大写标签风格 */
+    color: #aaaaaa; /* 次级文字颜色 */
+    margin-bottom: 8px;
+    margin-top: 20px; /* 增加段落间距 */
+    letter-spacing: 0.5px;
+}
+
+/* 第一个标题去掉顶部间距 */
+h3:first-of-type {
+    margin-top: 0;
+}
+
+/* --- 表单控件通用样式 --- */
+select, input[type="text"], button {
+    width: 100%; /* 让控件撑满容器宽度 */
+    padding: 10px 12px; /* 充实的内边距，方便点击 */
+    margin-bottom: 15px; /* 控件之间的垂直间距 */
+    box-sizing: border-box; /* 确保 padding 不会撑破宽度 */
+    border-radius: 3px; /* 微妙的圆角，显得不那么生硬 */
+    font-size: 14px;
+    outline: none; /* 移除默认的聚焦蓝框，后面自定义 */
+    transition: all 0.2s ease-in-out; /* 添加一点点平滑过渡 */
+}
+
+/* --- 输入框和下拉菜单 --- */
+select, input[type="text"] {
+    background-color: #333333; /* 比背景稍亮 */
+    border: 1px solid #444444; /* 扎实的边框 */
+    color: #ffffff;
+}
+
+/* 聚焦时的状态：稍微提亮边框 */
+select:focus, input[type="text"]:focus {
+    border-color: #2680eb; /* Adobe 蓝聚焦色 */
+    background-color: #383838;
+}
+
+/* 下拉菜单的特殊处理 */
+select {
+    /* 移除默认箭头样式 (为了统一样式，虽然在某些老引擎上可能不完美) */
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="%23aaaaaa" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>');
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    cursor: pointer;
+}
+
+/* --- 按钮 --- */
+button {
+    background-color: #4a4a4a; /* 标准按钮深灰色 */
+    border: 1px solid #555555;
+    color: #e6e6e6;
+    font-weight: 600;
+    cursor: pointer;
+    text-align: center;
+}
+
+/* 鼠标悬停在按钮上 */
+button:hover {
+    background-color: #5a5a5a; /* 稍微变亮 */
+    border-color: #666666;
+}
+
+/* 鼠标按下按钮 */
+button:active {
+    background-color: #3a3a3a; /* 变暗，营造按压感 */
+    border-color: #333333;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.2); /* 内阴影增加立体感 */
+    transform: translateY(1px); /* 轻微下沉 */
+}
+
+/* --- 特殊按钮样式 --- */
+
+/* 强调按钮 (选择按钮)：使用蓝色以突出显示 */
+#btn_FreeSelect {
+    background-color: #2680eb; /* Adobe 强调蓝 */
+    border: 1px solid #2680eb;
+    color: white;
+    margin-top: 10px; /* 与上方输入框拉开距离 */
+    font-size: 15px;
+}
+
+#btn_FreeSelect:hover {
+    background-color: #3790fc;
+}
+
+#btn_FreeSelect:active {
+    background-color: #1a6ecc;
+    border-color: #1a6ecc;
+}
+/* --- 基础控件清理 --- */
+select, input[type="text"] {
+    width: 100%;
+    padding: 10px 12px;
+    margin-bottom: 15px;
+    box-sizing: border-box;
+}
+
+/* --- 按钮基础样式 --- */
+button {
+    /* 统一设置 box-sizing 确保 padding 不会撑大宽度 */
+    box-sizing: border-box; 
+    padding: 10px;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 13px;
+    /* 移除全局的 width: 100% 或 auto，交给容器控制 */
+}
+
+/* --- 核心修复：按钮网格容器 --- */
+.button-grid {
+    display: grid;
+    /* 自动创建两列，每列平分剩余空间 */
+    grid-template-columns: 1fr 1fr; 
+    gap: 8px; /* 按钮之间的间距 */
+    margin-bottom: 20px;
+}
+
+/* 让网格里的按钮自动撑满格子 */
+.button-grid button {
+    width: 100%;
+    margin: 0; /* 清除之前杂乱的 margin */
+}
+
+/* 针对特别长的按钮，可以占满两列 */
+.button-grid button.full-row {
+    grid-column: span 2;
+}
+
+/* 底部那个核心“选择”按钮依然保持独立的大宽度 */
+#btn_FreeSelect {
+    width: 100%;
+    margin-top: 10px;
+    padding: 12px;
+}

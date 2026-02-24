@@ -1660,171 +1660,184 @@ $._PPP_ = {
         }
     },
 
+    //  select1: function() {
+    //      var sequence = app.project.activeSequence;
+    //      if (!sequence) return;
+
+    //      var videoTracks = sequence.videoTracks;
+    //      var numTracks = videoTracks.numTracks;
+
+    //      for (var trackIndex = 0; trackIndex < numTracks; trackIndex++) {
+    //          var clips = videoTracks[trackIndex].clips;
+    //          var numClips = clips.numItems;
+
+    //          for (var clipIndex = 0; clipIndex < numClips; clipIndex++) {
+    //              var selectState = (clipIndex % 2 === 0) ? 1 : 0;
+    //              clips[clipIndex].setSelected(selectState, 1);
+    //          }
+    //      }
+    //  },
+
     select1: function() {
         var sequence = app.project.activeSequence;
-        var globalRunCount = 0;
-        if (sequence) {
-            var trackGroups = [sequence.audioTracks, sequence.videoTracks];
-            var trackGroupNames = ["audioTracks", "videoTracks"];
-            var updateUI = true;
+        if (!sequence) return;
 
-            for (var groupIndex = 0; groupIndex < 2; groupIndex++) {
-                $._PPP_.updateEventPanel(trackGroupNames[groupIndex]);
-                var group = trackGroups[groupIndex];
-                for (var trackIndex = 0; trackIndex < group.numTracks; trackIndex++) {
-                    var track = group[trackIndex];
-                    var clips = track.clips;
-                    var transitions = track.transitions;
-                    var beforeSelected;
-                    var afterSelected;
-                    var initialSelectState;
+        var videoTracks = sequence.videoTracks;
+        if (!videoTracks) return;
 
-                    $._PPP_.updateEventPanel(
-                        "track:" +
-                        trackIndex +
-                        "	 clip count: " +
-                        clips.numItems +
-                        "	  transition count: " +
-                        transitions.numItems
-                    );
+        var numTracks = videoTracks.numTracks;
+        var allClips = [];
 
-                    for (var clipIndex = 0; clipIndex < clips.numItems; clipIndex++) {
-                        var selecttime = clipIndex % 2 === 0 ? 1 : 0;
-                        var clip = clips[clipIndex];
-                        var name =
-                            clip.projectItem === undefined ? "<null>" : clip.projectItem.name;
-                        initialSelectState = clip.isSelected();
-                        var oldOut = clip.outPoint;
-                        oldOut.seconds = oldOut.seconds - 2.0;
-                        clip.outPoint.ticks = oldOut.ticks;
+        for (var trackIndex = 0; trackIndex < numTracks; trackIndex++) {
+            var currentTrack = videoTracks[trackIndex];
+            if (!currentTrack || !currentTrack.clips) continue;
 
-                        // 随机选择剪辑
-                        var setIt = Math.random() > 0.5;
-                        if (selecttime == 1) {
-                            clip.setSelected(0, updateUI);
-                        } else {
-                            clip.setSelected(1, updateUI);
-                        }
+            var clips = currentTrack.clips;
+            var numClips = clips.numItems;
 
-                        if (clip.isAdjustmentLayer()) {
-                            $._PPP_.updateEventPanel(
-                                'Clip named "' + clip.name + '" is an adjustment layer.'
-                            );
-                        }
-
-                        var allClipsInThisSequenceFromSameSource = clip.getLinkedItems();
-
-                        if (allClipsInThisSequenceFromSameSource) {
-                            $._PPP_.updateEventPanel(
-                                "Found " +
-                                allClipsInThisSequenceFromSameSource.numItems +
-                                " clips from " +
-                                clip.projectItem.name +
-                                ", in this sequence."
-                            );
-                        }
-                        beforeSelected = initialSelectState ? "Y" : "N";
-                        afterSelected = clip.isSelected() ? "Y" : "N";
-                        $._PPP_.updateEventPanel(
-                            "clip:" +
-                            clipIndex +
-                            "    " +
-                            name +
-                            "    " +
-                            beforeSelected +
-                            " -> " +
-                            afterSelected
-                        );
-                    }
+            for (var clipIndex = 0; clipIndex < numClips; clipIndex++) {
+                var clip = clips[clipIndex];
+                if (clip) {
+                    allClips.push({
+                        targetClip: clip,
+                        startTime: clip.start.ticks
+                    });
                 }
             }
-        } else {
-            $._PPP_.updateEventPanel("no active sequence.");
+        }
+
+        allClips.sort(function(a, b) {
+            return parseInt(a.startTime, 10) - parseInt(b.startTime, 10);
+        });
+
+        var totalClips = allClips.length;
+        for (var i = 0; i < totalClips; i++) {
+            var selectState = (i % 2 === 0) ? 1 : 0;
+            allClips[i].targetClip.setSelected(selectState, 1);
         }
     },
 
     select2: function() {
         var sequence = app.project.activeSequence;
-        var globalRunCount = 0;
-        if (sequence) {
-            var trackGroups = [sequence.audioTracks, sequence.videoTracks];
-            var trackGroupNames = ["audioTracks", "videoTracks"];
-            var updateUI = true;
+        if (!sequence) return;
 
-            for (var groupIndex = 0; groupIndex < 2; groupIndex++) {
-                $._PPP_.updateEventPanel(trackGroupNames[groupIndex]);
-                var group = trackGroups[groupIndex];
-                for (var trackIndex = 0; trackIndex < group.numTracks; trackIndex++) {
-                    var track = group[trackIndex];
-                    var clips = track.clips;
-                    var transitions = track.transitions;
-                    var beforeSelected;
-                    var afterSelected;
-                    var initialSelectState;
+        var videoTracks = sequence.videoTracks;
+        if (!videoTracks) return;
 
-                    $._PPP_.updateEventPanel(
-                        "track:" +
-                        trackIndex +
-                        "	 clip count: " +
-                        clips.numItems +
-                        "	  transition count: " +
-                        transitions.numItems
-                    );
+        var numTracks = videoTracks.numTracks;
+        var allClips = [];
 
-                    for (var clipIndex = 0; clipIndex < clips.numItems; clipIndex++) {
-                        var selecttime = clipIndex % 2 === 0 ? 1 : 0;
-                        var clip = clips[clipIndex];
-                        var name =
-                            clip.projectItem === undefined ? "<null>" : clip.projectItem.name;
-                        initialSelectState = clip.isSelected();
-                        var oldOut = clip.outPoint;
-                        oldOut.seconds = oldOut.seconds - 2.0;
-                        clip.outPoint.ticks = oldOut.ticks;
+        for (var trackIndex = 0; trackIndex < numTracks; trackIndex++) {
+            var currentTrack = videoTracks[trackIndex];
+            if (!currentTrack || !currentTrack.clips) continue;
 
-                        // 随机选择剪辑
-                        var setIt = Math.random() > 0.5;
-                        if (selecttime == 1) {
-                            clip.setSelected(1, updateUI);
-                        } else {
-                            clip.setSelected(0, updateUI);
-                        }
+            var clips = currentTrack.clips;
+            var numClips = clips.numItems;
 
-                        if (clip.isAdjustmentLayer()) {
-                            $._PPP_.updateEventPanel(
-                                'Clip named "' + clip.name + '" is an adjustment layer.'
-                            );
-                        }
-
-                        var allClipsInThisSequenceFromSameSource = clip.getLinkedItems();
-
-                        if (allClipsInThisSequenceFromSameSource) {
-                            $._PPP_.updateEventPanel(
-                                "Found " +
-                                allClipsInThisSequenceFromSameSource.numItems +
-                                " clips from " +
-                                clip.projectItem.name +
-                                ", in this sequence."
-                            );
-                        }
-                        beforeSelected = initialSelectState ? "Y" : "N";
-                        afterSelected = clip.isSelected() ? "Y" : "N";
-                        $._PPP_.updateEventPanel(
-                            "clip:" +
-                            clipIndex +
-                            "    " +
-                            name +
-                            "    " +
-                            beforeSelected +
-                            " -> " +
-                            afterSelected
-                        );
-                    }
+            for (var clipIndex = 0; clipIndex < numClips; clipIndex++) {
+                var clip = clips[clipIndex];
+                if (clip) {
+                    allClips.push({
+                        targetClip: clip,
+                        startTime: clip.start.ticks
+                    });
                 }
             }
-        } else {
-            $._PPP_.updateEventPanel("no active sequence.");
+        }
+
+        allClips.sort(function(a, b) {
+            return parseInt(a.startTime, 10) - parseInt(b.startTime, 10);
+        });
+
+        var totalClips = allClips.length;
+        for (var i = 0; i < totalClips; i++) {
+            var selectState = (i % 2 !== 0) ? 1 : 0;
+            allClips[i].targetClip.setSelected(selectState, 1);
         }
     },
+
+    //  select2: function() {
+    //      var sequence = app.project.activeSequence;
+    //      var globalRunCount = 0;
+    //      if (sequence) {
+    //          var trackGroups = [sequence.audioTracks, sequence.videoTracks];
+    //          var trackGroupNames = ["audioTracks", "videoTracks"];
+    //          var updateUI = true;
+
+    //          for (var groupIndex = 0; groupIndex < 2; groupIndex++) {
+    //              $._PPP_.updateEventPanel(trackGroupNames[groupIndex]);
+    //              var group = trackGroups[groupIndex];
+    //              for (var trackIndex = 0; trackIndex < group.numTracks; trackIndex++) {
+    //                  var track = group[trackIndex];
+    //                  var clips = track.clips;
+    //                  var transitions = track.transitions;
+    //                  var beforeSelected;
+    //                  var afterSelected;
+    //                  var initialSelectState;
+
+    //                  $._PPP_.updateEventPanel(
+    //                      "track:" +
+    //                      trackIndex +
+    //                      "	 clip count: " +
+    //                      clips.numItems +
+    //                      "	  transition count: " +
+    //                      transitions.numItems
+    //                  );
+
+    //                  for (var clipIndex = 0; clipIndex < clips.numItems; clipIndex++) {
+    //                      var selecttime = clipIndex % 2 === 0 ? 1 : 0;
+    //                      var clip = clips[clipIndex];
+    //                      var name =
+    //                          clip.projectItem === undefined ? "<null>" : clip.projectItem.name;
+    //                      initialSelectState = clip.isSelected();
+    //                      var oldOut = clip.outPoint;
+    //                      oldOut.seconds = oldOut.seconds - 2.0;
+    //                      clip.outPoint.ticks = oldOut.ticks;
+
+    //                      // 随机选择剪辑
+    //                      var setIt = Math.random() > 0.5;
+    //                      if (selecttime == 1) {
+    //                          clip.setSelected(1, updateUI);
+    //                      } else {
+    //                          clip.setSelected(0, updateUI);
+    //                      }
+
+    //                      if (clip.isAdjustmentLayer()) {
+    //                          $._PPP_.updateEventPanel(
+    //                              'Clip named "' + clip.name + '" is an adjustment layer.'
+    //                          );
+    //                      }
+
+    //                      var allClipsInThisSequenceFromSameSource = clip.getLinkedItems();
+
+    //                      if (allClipsInThisSequenceFromSameSource) {
+    //                          $._PPP_.updateEventPanel(
+    //                              "Found " +
+    //                              allClipsInThisSequenceFromSameSource.numItems +
+    //                              " clips from " +
+    //                              clip.projectItem.name +
+    //                              ", in this sequence."
+    //                          );
+    //                      }
+    //                      beforeSelected = initialSelectState ? "Y" : "N";
+    //                      afterSelected = clip.isSelected() ? "Y" : "N";
+    //                      $._PPP_.updateEventPanel(
+    //                          "clip:" +
+    //                          clipIndex +
+    //                          "    " +
+    //                          name +
+    //                          "    " +
+    //                          beforeSelected +
+    //                          " -> " +
+    //                          afterSelected
+    //                      );
+    //                  }
+    //              }
+    //          }
+    //      } else {
+    //          $._PPP_.updateEventPanel("no active sequence.");
+    //      }
+    //  },
 
     // Define a couple of callback functions, for AME to use during render.
 
@@ -3444,6 +3457,46 @@ $._PPP_ = {
             $._PPP_.updateEventPanel("No active sequence.");
         }
     },
+    
+    selectCustomCycle: function(cycleLength, targetIndex) {
+        var sequence = app.project.activeSequence;
+        if (!sequence) return;
+
+        var videoTracks = sequence.videoTracks;
+        if (!videoTracks) return;
+
+        var numTracks = videoTracks.numTracks;
+        var allClips = [];
+
+        for (var trackIndex = 0; trackIndex < numTracks; trackIndex++) {
+            var currentTrack = videoTracks[trackIndex];
+            if (!currentTrack || !currentTrack.clips) continue;
+
+            var clips = currentTrack.clips;
+            var numClips = clips.numItems;
+
+            for (var clipIndex = 0; clipIndex < numClips; clipIndex++) {
+                var clip = clips[clipIndex];
+                if (clip) {
+                    allClips.push({
+                        targetClip: clip,
+                        startTime: clip.start.ticks
+                    });
+                }
+            }
+        }
+
+        allClips.sort(function(a, b) {
+            return parseInt(a.startTime, 10) - parseInt(b.startTime, 10);
+        });
+
+        var totalClips = allClips.length;
+        for (var i = 0; i < totalClips; i++) {
+            var remainder = i % cycleLength;
+            var selectState = (remainder === (targetIndex - 1)) ? 1 : 0;
+            allClips[i].targetClip.setSelected(selectState, 1);
+        }
+    },
 
     createNewProject: function() {
         var outPath = Folder.selectDialog("Choose the output directory");
@@ -3874,57 +3927,57 @@ $._PPP_ = {
         }
     },
 
-      importJSONFromPath: function(filePath) {
-		try {
-			var activeSeq = app.project.activeSequence;
-			if (!activeSeq) {
-				alert("Error: No active sequence.");
-				return;
-			}
+    importJSONFromPath: function(filePath) {
+        try {
+            var activeSeq = app.project.activeSequence;
+            if (!activeSeq) {
+                alert("Error: No active sequence.");
+                return;
+            }
 
-			var itemToInsert = null;
-			var viewIDs = app.getProjectViewIDs();
-			if (viewIDs && viewIDs.length > 0) {
-				var selectedItems = app.getProjectViewSelection(viewIDs[0]);
-				if (selectedItems && selectedItems.length > 0) {
-					itemToInsert = selectedItems[0];
-				}
-			}
-			if (!itemToInsert && app.project.rootItem.children.numItems > 0) {
-				itemToInsert = app.project.rootItem.children[0];
-			}
-			if (!itemToInsert || itemToInsert.type === 2) { 
-				alert("Error: Please select a media item first.");
-				return;
-			}
+            var itemToInsert = null;
+            var viewIDs = app.getProjectViewIDs();
+            if (viewIDs && viewIDs.length > 0) {
+                var selectedItems = app.getProjectViewSelection(viewIDs[0]);
+                if (selectedItems && selectedItems.length > 0) {
+                    itemToInsert = selectedItems[0];
+                }
+            }
+            if (!itemToInsert && app.project.rootItem.children.numItems > 0) {
+                itemToInsert = app.project.rootItem.children[0];
+            }
+            if (!itemToInsert || itemToInsert.type === 2) {
+                alert("Error: Please select a media item first.");
+                return;
+            }
 
-			var jsonFile = new File(filePath);
-			if (!jsonFile.exists) {
-				alert("Error: File not found at " + filePath);
-				return;
-			}
+            var jsonFile = new File(filePath);
+            if (!jsonFile.exists) {
+                alert("Error: File not found at " + filePath);
+                return;
+            }
 
-			jsonFile.encoding = "UTF-8";
-			jsonFile.open("r");
-			var content = jsonFile.read();
-			jsonFile.close();
+            jsonFile.encoding = "UTF-8";
+            jsonFile.open("r");
+            var content = jsonFile.read();
+            jsonFile.close();
 
-			content = content.replace(/^\uFEFF/, '').replace(/^\s+|\s+$/g, '');
-			var notes = eval('(' + content + ')');
+            content = content.replace(/^\uFEFF/, '').replace(/^\s+|\s+$/g, '');
+            var notes = eval('(' + content + ')');
 
-			var targetVTrack = activeSeq.videoTracks[0];
+            var targetVTrack = activeSeq.videoTracks[0];
 
-			for (var i = 0; i < notes.length; i++) {
-				var t = new Time();
-				t.seconds = parseFloat(notes[i].start_time);
-				targetVTrack.overwriteClip(itemToInsert, t);
-			}
-			
-			alert("Success! Inserted " + notes.length + " clips.");
+            for (var i = 0; i < notes.length; i++) {
+                var t = new Time();
+                t.seconds = parseFloat(notes[i].start_time);
+                targetVTrack.overwriteClip(itemToInsert, t);
+            }
 
-		} catch(e) {
-			alert("JSX Error: " + e.message + " on line " + e.line);
-		}
-	},
+            alert("Success! Inserted " + notes.length + " clips.");
+
+        } catch (e) {
+            alert("JSX Error: " + e.message + " on line " + e.line);
+        }
+    },
 
 };

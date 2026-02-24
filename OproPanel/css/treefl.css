@@ -1,0 +1,150 @@
+/* =========================================
+   Fluent Timeline 更新时间轴样式 (紧凑动画版)
+========================================= */
+.fluent-timeline {
+    padding: 0 16px 8px 16px; /* 移除顶部多余边距，左右与卡片标题对齐 */
+    color: var(--neutral-foreground-rest);
+}
+
+.timeline-group {
+    margin-bottom: 4px; /* 减小年份组之间的间距 */
+}
+
+/* 展开收起头部变得更紧凑 */
+.timeline-year-header {
+    font-size: 1rem; /* 字号略微调小，更符合紧凑型列表 */
+    font-weight: 600;
+    cursor: pointer;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 0; /* 减小上下边距 */
+    outline: none;
+    transition: opacity 0.2s;
+}
+
+.timeline-year-header:hover {
+    opacity: 0.8;
+}
+
+/* 隐藏原生三角形 */
+.timeline-year-header::-webkit-details-marker,
+.timeline-year-header::marker {
+    display: none;
+}
+
+/* 箭头及其旋转动画 */
+.timeline-chevron {
+    width: 14px; /* 箭头也稍微缩小以匹配整体字号 */
+    height: 14px;
+    fill: currentColor;
+    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+details[open] > .timeline-year-header .timeline-chevron {
+    transform: rotate(90deg);
+}
+
+/* 【核心修复】展开时的内容滑入动画 */
+/* 将动画绑定在 summary 之后的所有兄弟元素上，提高触发的稳定性 */
+details[open] summary ~ * {
+    animation: timelineSlideDown 0.25s cubic-bezier(0.1, 0.9, 0.2, 1) forwards;
+}
+
+@keyframes timelineSlideDown {
+    from { opacity: 0; transform: translateY(-6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* 缩减整体向右缩进和内部边距 */
+.timeline-items {
+    margin-left: 14px; 
+    padding-top: 4px; 
+}
+
+/* 减小卡片之间的垂直间距 */
+.timeline-item {
+    position: relative;
+    padding-left: 20px; 
+    padding-bottom: 12px; 
+}
+
+/* 竖向连接线微调 */
+.timeline-item::before {
+    content: '';
+    position: absolute;
+    left: 4px;
+    top: 12px; 
+    bottom: -4px; 
+    width: 2px;
+    background-color: var(--neutral-stroke-divider-rest, #e1dfdd); 
+}
+
+.timeline-item:last-child::before {
+    display: none;
+}
+
+/* 圆点大小微调 */
+.timeline-item::after {
+    content: '';
+    position: absolute;
+    left: 1px;
+    top: 6px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: var(--fill-color, #fff); 
+    border: 2px solid var(--accent-fill-rest, #0078d4); 
+}
+
+/* 卡片内部变得更紧凑 */
+.timeline-card {
+    background-color: var(--neutral-layer-2, rgba(128, 128, 128, 0.04)); 
+    border: 1px solid var(--neutral-stroke-rest, transparent);
+    border-radius: 4px;
+    padding: 8px 12px; /* 大幅减小卡片内部留白 */
+    transition: background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.timeline-card:hover {
+    box-shadow: 0 1.6px 3.6px 0 rgba(0,0,0,0.132), 0 0.3px 0.9px 0 rgba(0,0,0,0.108);
+}
+
+/* 版本号和日期区域变紧凑 */
+.timeline-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px; /* 缩小与正文的距离 */
+}
+
+.version-badge {
+    background-color: var(--accent-fill-rest, #0078d4);
+    color: #ffffff;
+    font-size: 0.75rem;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 600;
+}
+
+.date {
+    font-size: 0.8rem;
+    opacity: 0.65; 
+}
+
+.timeline-body p {
+    margin: 0;
+    font-size: 0.9rem; /* 正文稍微调小一点，显得更精致 */
+    line-height: 1.5;
+    word-break: break-all;
+    word-wrap: break-word;
+    white-space: normal; 
+}
+
+#UpC :is(p, h1, h2, h3, h4, h5, h6){
+margin: auto auto .75rem auto;
+}
+#UpC p{
+   margin-top: 0;
+}

@@ -1,39 +1,19 @@
 <!doctype html>
-<html>
+<html lang="zh-CN">
+<title>顺飞面板</title>
 
 <head>
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
    <meta charset="utf-8" />
    <script src="./lib/CSInterface.js"></script>
    <script src="./lib/jquery-1.9.1.js"></script>
-   <script type="module" src="./web-components.js"></script>
-   <script type="module" src="./fluentplus.js"></script>
-   <link id="ppstyle" href="css/style.css" rel="stylesheet" type="text/css" />
-   <style>
-      * {
-         color: var(--neutral-foreground-rest);
-      }
-
-      html,
-      body {
-         overflow: hidden;
-      }
-
-      body {
-         background-color: var(--fill-color);
-         color: var(--neutral-foreground-rest);
-         margin: 0;
-         padding: 10px;
-         height: 100vh;
-         box-sizing: border-box;
-      }
-
-      .card-container {
-         background-color: transparent;
-      }
-   </style>
    <script src="./ext.js"></script>
+   <script type="module" src="web-components.js"></script>
+   <script type="module" src="fluentplus.js"></script>
+   <script src="main.js"></script>
+   <link id="ppstyle" href="css/style.css" rel="stylesheet" type="text/css" />
+   <link rel="stylesheet" href="css/treefl.css">
 </head>
-
 <script type="module">
    import { baseLayerLuminance, StandardLuminance } from "./web-components.js";
 
@@ -94,7 +74,34 @@
             }
          },
       );
-      
+      document.getElementById('btn_PPRO_Sel').addEventListener('click', () => {
+         const cycleLength = document.getElementById('cycleLengthSelect').value;
+         const targetIndex = document.getElementById('targetIndexSelect').value;
+
+         // 2. 校验用户是否已经做出了选择
+         if (!cycleLength || !targetIndex) {
+            alert("请先选择循环次数和目标索引！");
+            return;
+         }
+
+         // 3. 将变量拼接到字符串中，传给你的 ExtendScript (JSX)
+         // 为了防止字符类型导致 JSX 报错，这里用 Number() 明确转成数字
+         const jsxCommand = `$._PPP_.selectCustomCycle(${Number(cycleLength)}, ${Number(targetIndex)})`;
+
+         // 4. 调用 CEP 原生的 evalScript 发送给 Premiere
+         if (window.__adobe_cep__) {
+            // 处于 Premiere CEP 环境中
+            csInterface.evalScript(jsxCommand, function (result) {
+               // 这里可以接收 JSX 传回来的返回值（如果需要的话）
+               console.log("ExtendScript 执行完毕，返回值: ", result);
+            });
+         } else {
+            // 处于普通浏览器环境（本地双击网页测试时）
+            console.log("即将发送给宿主的脚本: ", jsxCommand);
+            alert("当前不在 Premiere 环境中，脚本命令已打印到控制台: \n" + jsxCommand);
+         }
+      });
+
    });
 </script>
 
@@ -108,7 +115,7 @@
                   <fluent-avatar src="./lib/Latia.png" size="64" name="Atlias"></fluent-avatar>
                   <div class="ccb">
                      <p style="font-size: small; margin: 4px 0;">By EllAri </p>
-                     <fluent-anchor id="refresh-link" href="javascript:hisory.go(0)">刷新面板</fluent-anchor>
+                     <fluent-anchor id="refresh-link" href="javascript:history.go(0)">刷新面板</fluent-anchor>
                   </div>
                </div>
             </div>
@@ -140,7 +147,50 @@
                   </fluent-button>
                </div>
             </fluent-card>
-
+            <fluent-card class="FSLT">
+               <div class="card-header">
+                  <h2 style="margin-bottom: .5rem;">自由选择</h2>
+                  <p style="font-size: small;margin-top: 0;"> 我爱自由 ✦</p>
+               </div>
+               <div class="card-content" id="FrS">
+                  <div class="select-group">
+                     <fluent-select id="cycleLengthSelect" title="循环长度（隔n-1个选一次）" position="below"
+                        style="--z-index: 9999;">
+                        <fluent-option value="" disabled selected>几次循环 (Cycle Length)</fluent-option>
+                        <fluent-option value="1">1</fluent-option>
+                        <fluent-option value="2">2</fluent-option>
+                        <fluent-option value="3">3</fluent-option>
+                        <fluent-option value="4">4</fluent-option>
+                        <fluent-option value="5">5</fluent-option>
+                        <fluent-option value="6">6</fluent-option>
+                        <fluent-option value="7">7</fluent-option>
+                        <fluent-option value="8">8</fluent-option>
+                        <fluent-option value="9">9</fluent-option>
+                        <fluent-option value="10">10</fluent-option>
+                     </fluent-select>
+                     <span class="helper-text">几个序列循环一次</span>
+                  </div>
+                  <div class="select-group">
+                     <fluent-select id="targetIndexSelect" title="选其中的第几个" position="below" style="--z-index: 9999;">
+                        <fluent-option value="" disabled selected>选择序号 (Target Index)</fluent-option>
+                        <fluent-option value="1">1</fluent-option>
+                        <fluent-option value="2">2</fluent-option>
+                        <fluent-option value="3">3</fluent-option>
+                        <fluent-option value="4">4</fluent-option>
+                        <fluent-option value="5">5</fluent-option>
+                        <fluent-option value="6">6</fluent-option>
+                        <fluent-option value="7">7</fluent-option>
+                        <fluent-option value="8">8</fluent-option>
+                        <fluent-option value="9">9</fluent-option>
+                        <fluent-option value="10">10</fluent-option>
+                     </fluent-select>
+                     <span class="helper-text">选其中的第几个</span>
+                  </div>
+                  <fluent-button appearance="accent" id="btn_PPRO_Sel">
+                     选择
+                  </fluent-button>
+               </div>
+            </fluent-card>
             <fluent-card>
                <div class="card-header">
                   <h2>22-23 新增功能!</h2>
@@ -396,627 +446,24 @@
                      UI</fluent-button>
                   <fluent-button id="web_Ge_B"
                      onClick="openExternalSite('https://gemini.google.com/', '我就喜欢玩这个')">Gemini</fluent-button>
+                  <fluent-button id="Compat_B" onclick="window.location.href='compat_index.html'">兼容版主页</fluent-button>
                </div>
             </fluent-card>
-            <fluent-card>
+            <fluent-card id="UpC">
                <div class="card-header">
-                  <h2>更新内容 - 2026/2/24</h2>
+                  <h2>更新内容</h2>
                </div>
 
                <div class="card-content">
-                  <p>添加了一堆广告。</p>
+                  <p>我添加了一堆广告。</p>
                   <fluent-button appearance="accent" onClick="alert('艾雅米诺')">👎差评</fluent-button>
                </div>
             </fluent-card>
+
+            <script src="timeline.js"></script>
          </main>
    </fluent-provider>
-   <script>
-      // Scripts that need to run after the DOM is fully parsed.
-      document.addEventListener("DOMContentLoaded", function () {
-         // Re-attaching event listeners for dynamically added fluent-buttons
-         $("#copypresets").on("click", function (e) {
-            e.preventDefault();
-
-            var csInterface = new CSInterface();
-            var OSVersion = csInterface.getOSInformation();
-            var path = csInterface.getSystemPath(SystemPath.EXTENSION);
-
-            csInterface.evalScript("$._PPP_.getUserName()", myUserNameFunction);
-
-            if (OSVersion) {
-               if (OSVersion.indexOf("Windows") >= 0) {
-                  var initPath =
-                     "C:\\Users\\" + document.getElementById("username").innerHTML;
-                  var sep = "\\\\";
-                  path = path.replace(/\//g, sep);
-               } else {
-                  var initPath =
-                     "/Users/" + document.getElementById("username").innerHTML;
-                  var sep = "/";
-               }
-
-               path =
-                  path +
-                  sep +
-                  "payloads" +
-                  sep +
-                  "Effect\ Presets\ and\ Custom\ Items.prfpset";
-
-               var readResult = window.cep.fs.readFile(path);
-
-               if (0 == readResult.err) {
-                  var addOutPath =
-                     "/Documents/Adobe/Premiere\ Pro/22.0/Profile-" +
-                     document.getElementById("username").innerHTML +
-                     "/Effect\ Presets\ and\ Custom\ Items.prfpset";
-                  var fullOutPath = initPath + addOutPath;
-                  var writeResult = window.cep.fs.writeFile(
-                     fullOutPath,
-                     readResult.data,
-                  );
-                  var resultMsg =
-                     0 == writeResult.err
-                        ? "成功复制效果预设。"
-                        : "复制效果预设失败。";
-                  csInterface.evalScript(
-                     "$._PPP_.updateEventPanel('" + resultMsg + "')",
-                  );
-               }
-            }
-         });
-
-         $("#toggleproxy").on("click", function (e) {
-            e.preventDefault();
-            var csInterface = new CSInterface();
-            csInterface.evalScript(
-               "$._PPP_.toggleProxyState()",
-               mySetProxyFunction,
-            );
-            csInterface.evalScript(
-               "$._PPP_.getProjectProxySetting()",
-               myGetProxyFunction,
-            );
-         });
-
-         $("#checkforums").on("click", function (e) {
-            e.preventDefault();
-            new CSInterface().openURLInDefaultBrowser(
-               "https://forums.adobe.com/community/premiere/sdk",
-            );
-         });
-
-         $("#openfolder").on("click", function (e) {
-            e.preventDefault();
-            var csInterface = new CSInterface();
-            var path = csInterface.getSystemPath(SystemPath.EXTENSION);
-            if (csInterface.getOSInformation().indexOf("Windows") >= 0) {
-               window.cep.process.createProcess(
-                  "C:\\Windows\\explorer.exe",
-                  path.replace(/\//g, "\\"),
-               );
-            } else {
-               window.cep.process.createProcess("/usr/bin/open", path);
-            }
-         });
-
-         $("#openlogfilefolder").on("click", function (e) {
-            e.preventDefault();
-            var csInterface = new CSInterface();
-            var userDataPath = csInterface.getSystemPath(SystemPath.USER_DATA);
-            var actualDestinationPath = userDataPath.split("A")[0];
-
-            if (csInterface.getOSInformation().indexOf("Windows") >= 0) {
-               actualDestinationPath +=
-                  "AppData/Roaming/Adobe/Premiere Pro/22.0/logs";
-               window.cep.process.createProcess(
-                  "C:\\Windows\\explorer.exe",
-                  actualDestinationPath.replace(/\//g, "\\"),
-               );
-            } else {
-               actualDestinationPath += "Preferences/Adobe/Premiere Pro/22.0/logs";
-               window.cep.process.createProcess(
-                  "/usr/bin/open",
-                  actualDestinationPath,
-               );
-            }
-         });
-
-         $("#readAPIdocs").on("click", function (e) {
-            e.preventDefault();
-            new CSInterface().openURLInDefaultBrowser(
-               "http://ppro.aenhancers.com",
-            );
-         });
-
-         $("#newseqfrompreset").on("click", function (e) {
-            e.preventDefault();
-            var csInterface = new CSInterface();
-            var path =
-               csInterface.getSystemPath(SystemPath.EXTENSION) +
-               "/payloads/PProPanel.sqpreset";
-            var script =
-               "$._PPP_.createSequenceFromPreset('" +
-               path.replace(/\\/g, "\\\\").replace(/"/g, '\\"') +
-               "')";
-            csInterface.evalScript(script);
-         });
-
-         $("#renderusingdefaultpreset").on("click", function (e) {
-            e.preventDefault();
-            var csInterface = new CSInterface();
-            var path =
-               csInterface.getSystemPath(SystemPath.EXTENSION) +
-               "/payloads/example.epr";
-            var script =
-               "$._PPP_.render('" +
-               path.replace(/\\/g, "\\\\").replace(/"/g, '\\"') +
-               "')";
-            csInterface.evalScript(script);
-         });
-
-         $("#stitchusingdefaultpreset").on("click", function (e) {
-            e.preventDefault();
-            var csInterface = new CSInterface();
-            var path =
-               csInterface.getSystemPath(SystemPath.EXTENSION) +
-               "/payloads/example.epr";
-            var script =
-               "$._PPP_.stitch('" +
-               path.replace(/\\/g, "\\\\").replace(/"/g, '\\"') +
-               "')";
-            csInterface.evalScript(script);
-         });
-
-         $("#transcodeexternal").on("click", function (e) {
-            e.preventDefault();
-            var csInterface = new CSInterface();
-            var path =
-               csInterface.getSystemPath(SystemPath.EXTENSION) +
-               "/payloads/example.epr";
-            var script =
-               "$._PPP_.transcodeExternal('" +
-               path.replace(/\\/g, "\\\\").replace(/"/g, '\\"') +
-               "')";
-            csInterface.evalScript(script);
-         });
-
-         $("#saveaspng").on("click", function (e) {
-            e.preventDefault();
-            var csInterface = new CSInterface();
-            var path =
-               csInterface.getSystemPath(SystemPath.EXTENSION) +
-               "/payloads/png.epr";
-            var script =
-               "$._PPP_.exportCurrentFrameAsPNG('" +
-               path.replace(/\\/g, "\\\\").replace(/"/g, '\\"') +
-               "')";
-            csInterface.evalScript(script);
-         });
-
-         $("#ingest").on("click", function (e) {
-            e.preventDefault();
-            var csInterface = new CSInterface();
-            var path =
-               csInterface.getSystemPath(SystemPath.EXTENSION) +
-               "/payloads/example.epr";
-            var script =
-               "$._PPP_.ingestFiles('" +
-               path.replace(/\\/g, "\\\\").replace(/"/g, '\\"') +
-               "')";
-            csInterface.evalScript(script);
-         });
-
-         $("#transcodeusingdefaultpreset").on("click", function (e) {
-            e.preventDefault();
-            var csInterface = new CSInterface();
-            var path =
-               csInterface.getSystemPath(SystemPath.EXTENSION) +
-               "/payloads/example.epr";
-            var script =
-               "$._PPP_.transcode('" +
-               path.replace(/\\/g, "\\\\").replace(/"/g, '\\"') +
-               "')";
-            csInterface.evalScript(script);
-         });
-
-         document.body.onbeforeunload = function () {
-            var csInterface = new CSInterface();
-            csInterface.evalScript("$._PPP_.closeLog()");
-         };
-      });
-      function loadJsonNative() {
-         var csInterface = new CSInterface();
-         var result = window.cep.fs.showOpenDialog(
-            false,
-            false,
-            "选择 extracted_notes.json",
-            "",
-            ["json"],
-         );
-
-         if (result.err === 0 && result.data.length > 0) {
-            var filePath = result.data[0];
-            var safePath = filePath.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
-            csInterface.evalScript(
-               '$._PPP_.importJSONFromPath("' + safePath + '")',
-            );
-         }
-      }
-      function tieba() {
-         // 獲取插件與 Adobe 宿主通信的接口
-         var cs = new CSInterface();
-
-         if (confirm("111真关注吗")) {
-            // 調用系統瀏覽器開啟 URL，這樣你的插件面板還能保持原樣
-            cs.openURLInDefaultBrowser("https://tieba.baidu.com/f?kw=mizzle");
-         }
-
-      }
-      function openExternalSite(url, confirmMsg) {
-         var cs = new CSInterface();
-         if (confirm(confirmMsg)) {
-            cs.openURLInDefaultBrowser(url);
-         }
-      }
-   </script>
-   <script type="text/javascript">
-      $(document).ready(function () {
-         // For functions which require interaction at the JavaScript level, we provide these JQuery-based
-         // handlers, instead of directly invoking ExtendScript .This gives the JavaScript layer a chance
-         // to pass data into the ExtendScript layer, and process the results.
-
-         $("#copypresets").on("click", function (e) {
-            e.preventDefault();
-
-            var csInterface = new CSInterface();
-            var OSVersion = csInterface.getOSInformation();
-            var path = csInterface.getSystemPath(SystemPath.EXTENSION);
-
-            csInterface.evalScript("$._PPP_.getUserName()", myUserNameFunction);
-
-            if (OSVersion) {
-               // The path always comes back with '/' path separators. Windows needs '\\'.
-
-               if (OSVersion.indexOf("Windows") >= 0) {
-                  var initPath = "C:\\Users\\" + username.innerHTML;
-                  var sep = "\\\\";
-                  path = path.replace(/\//g, sep);
-               } else {
-                  var initPath = "/Users/" + username.innerHTML;
-                  var sep = "/";
-               }
-
-               path =
-                  path +
-                  sep +
-                  "payloads" +
-                  sep +
-                  "Effect\ Presets\ and\ Custom\ Items.prfpset";
-
-               var readResult = window.cep.fs.readFile(path);
-
-               if (0 == readResult.err) {
-                  // We build a path to the preset, based on the OS user's name.
-
-                  var addOutPath =
-                     "/Documents/Adobe/Premiere\ Pro/22.0/Profile-" +
-                     username.innerHTML +
-                     "/Effect\ Presets\ and\ Custom\ Items.prfpset";
-                  var fullOutPath = initPath + addOutPath;
-                  var writeResult = window.cep.fs.writeFile(
-                     fullOutPath,
-                     readResult.data,
-                  );
-                  var resultMsg = "";
-
-                  if (0 == writeResult.err) {
-                     resultMsg =
-                        "Successfully copied effect presets from panel to current user configuration.";
-                  } else {
-                     resultMsg = "Failed to copy effect presets.";
-                  }
-
-                  var postToEventPanel = "$._PPP_.updateEventPanel('";
-                  postToEventPanel += resultMsg;
-                  postToEventPanel += "'";
-                  postToEventPanel += ")";
-
-                  csInterface.evalScript(postToEventPanel);
-               }
-            }
-         });
-
-         $("#toggleproxy").on("click", function (e) {
-            e.preventDefault();
-            var csInterface = new CSInterface();
-            csInterface.evalScript(
-               "$._PPP_.toggleProxyState()",
-               mySetProxyFunction,
-            );
-            csInterface.evalScript(
-               "$._PPP_.getProjectProxySetting()",
-               myGetProxyFunction,
-            );
-         });
-
-         $("#checkforums").on("click", function (e) {
-            e.preventDefault();
-            var csInterface = new CSInterface();
-            csInterface.openURLInDefaultBrowser(
-               "https://forums.adobe.com/community/premiere/sdk",
-            );
-         });
-
-         $("#openfolder").on("click", function (e) {
-            e.preventDefault();
-            var csInterface = new CSInterface();
-            var OSVersion = csInterface.getOSInformation();
-            var path = csInterface.getSystemPath(SystemPath.EXTENSION);
-
-            if (OSVersion) {
-               // The path always comes back with '/' path separators. Windows needs '\\'.
-               if (OSVersion.indexOf("Windows") >= 0) {
-                  var sep = "\\";
-                  path = path.replace(/\//g, sep);
-                  window.cep.process.createProcess(
-                     "C:\\Windows\\explorer.exe",
-                     path,
-                  );
-               } else {
-                  window.cep.process.createProcess("/usr/bin/open", path);
-               }
-            }
-         });
-
-         $("#openlogfilefolder").on("click", function (e) {
-            e.preventDefault();
-            var csInterface = new CSInterface();
-            var OSVersion = csInterface.getOSInformation();
-            var userDataPath = csInterface.getSystemPath(SystemPath.USER_DATA);
-            var justTheFirstBit = userDataPath.split("A");
-            var actualDestinationPath = justTheFirstBit[0];
-
-            if (OSVersion) {
-               // The path always comes back with '/' path separators. Windows needs '\\'.
-               if (OSVersion.indexOf("Windows") >= 0) {
-                  actualDestinationPath =
-                     actualDestinationPath +
-                     "AppData/Roaming/Adobe/Premiere Pro/22.0/logs";
-                  var sep = "\\";
-                  actualDestinationPath = actualDestinationPath.replace(/\//g, sep);
-                  window.cep.process.createProcess(
-                     "C:\\Windows\\explorer.exe",
-                     actualDestinationPath,
-                  );
-               } else {
-                  actualDestinationPath =
-                     actualDestinationPath +
-                     "Preferences/Adobe/Premiere Pro/22.0/logs";
-                  window.cep.process.createProcess(
-                     "/usr/bin/open",
-                     actualDestinationPath,
-                  );
-               }
-            }
-         });
-
-         $("#readAPIdocs").on("click", function (e) {
-            e.preventDefault();
-            var csInterface = new CSInterface();
-            csInterface.openURLInDefaultBrowser("http://ppro.aenhancers.com");
-         });
-
-         $("#newseqfrompreset").on("click", function (e) {
-            e.preventDefault();
-            var csInterface = new CSInterface();
-            var OSVersion = csInterface.getOSInformation();
-            var path = csInterface.getSystemPath(SystemPath.EXTENSION);
-
-            if (OSVersion) {
-               // The path always comes back with '/' path separators. Windows needs '\\'.
-               if (OSVersion.indexOf("Windows") >= 0) {
-                  var sep = "\\\\";
-                  path = path.replace(/\//g, sep);
-               } else {
-                  var sep = "/";
-               }
-
-               // Build a String to pass the path to the script.
-               // (Sounds more complicated than it is.)
-
-               path = path + sep + "payloads" + sep + "PProPanel.sqpreset";
-
-               var pre = "$._PPP_.createSequenceFromPreset('";
-               var post = "'";
-               var postpost = ")";
-
-               var whole_megillah = pre + path + post + postpost;
-
-               csInterface.evalScript(whole_megillah);
-            }
-         });
-
-         $("#renderusingdefaultpreset").on("click", function (e) {
-            e.preventDefault();
-            var csInterface = new CSInterface();
-            var OSVersion = csInterface.getOSInformation();
-            var path = csInterface.getSystemPath(SystemPath.EXTENSION);
-
-            if (OSVersion) {
-               // The path always comes back with '/' path separators. Windows needs '\\'.
-               if (OSVersion.indexOf("Windows") >= 0) {
-                  var sep = "\\\\";
-                  path = path.replace(/\//g, sep);
-               } else {
-                  var sep = "/";
-               }
-
-               // Build a String to pass the path to the script.
-               // (Sounds more complicated than it is.)
-
-               path = path + sep + "payloads" + sep + "example.epr";
-
-               var pre = "$._PPP_.render('";
-               var post = "'";
-               var postpost = ")";
-
-               var whole_megillah = pre + path + post + postpost;
-
-               csInterface.evalScript(whole_megillah);
-            }
-         });
-
-         $("#stitchusingdefaultpreset").on("click", function (e) {
-            e.preventDefault();
-            var csInterface = new CSInterface();
-            var OSVersion = csInterface.getOSInformation();
-            var path = csInterface.getSystemPath(SystemPath.EXTENSION);
-
-            if (OSVersion) {
-               // The path always comes back with '/' path separators. Windows needs '\\'.
-               if (OSVersion.indexOf("Windows") >= 0) {
-                  var sep = "\\\\";
-                  path = path.replace(/\//g, sep);
-               } else {
-                  var sep = "/";
-               }
-
-               // Build a String to pass the path to the script.
-               // (Sounds more complicated than it is.)
-
-               path = path + sep + "payloads" + sep + "example.epr";
-
-               var pre = "$._PPP_.stitch('";
-               var post = "'";
-               var postpost = ")";
-
-               var whole_megillah = pre + path + post + postpost;
-
-               csInterface.evalScript(whole_megillah);
-            }
-         });
-
-         $("#transcodeexternal").on("click", function (e) {
-            e.preventDefault();
-            var csInterface = new CSInterface();
-            var OSVersion = csInterface.getOSInformation();
-            var path = csInterface.getSystemPath(SystemPath.EXTENSION);
-
-            if (OSVersion) {
-               // The path always comes back with '/' path separators. Windows needs '\\'.
-               if (OSVersion.indexOf("Windows") >= 0) {
-                  var sep = "\\\\";
-                  path = path.replace(/\//g, sep);
-               } else {
-                  var sep = "/";
-               }
-
-               // Build a String to pass the path to the script.
-               // (Sounds more complicated than it is.)
-
-               path = path + sep + "payloads" + sep + "example.epr";
-
-               var pre = "$._PPP_.transcodeExternal('";
-               var post = "'";
-               var postpost = ")";
-
-               var whole_megillah = pre + path + post + postpost;
-
-               csInterface.evalScript(whole_megillah);
-            }
-         });
-
-         $("#saveaspng").on("click", function (e) {
-            e.preventDefault();
-            var csInterface = new CSInterface();
-            var OSVersion = csInterface.getOSInformation();
-            var path = csInterface.getSystemPath(SystemPath.EXTENSION);
-
-            if (OSVersion) {
-               // The path always comes back with '/' path separators. Windows needs '\\'.
-               if (OSVersion.indexOf("Windows") >= 0) {
-                  var sep = "\\\\";
-                  path = path.replace(/\//g, sep);
-               } else {
-                  var sep = "/";
-               }
-
-               // Build a String to pass the path to the script.
-               // (Sounds more complicated than it is.)
-
-               path = path + sep + "payloads" + sep + "png.epr";
-
-               var pre = "$._PPP_.exportCurrentFrameAsPNG('";
-               var post = "'";
-               var postpost = ")";
-
-               var whole_megillah = pre + path + post + postpost;
-
-               csInterface.evalScript(whole_megillah);
-            }
-         });
-
-         $("#ingest").on("click", function (e) {
-            e.preventDefault();
-            var csInterface = new CSInterface();
-            var OSVersion = csInterface.getOSInformation();
-            var path = csInterface.getSystemPath(SystemPath.EXTENSION);
-
-            if (OSVersion) {
-               // The path always comes back with '/' path separators. Windows needs '\\'.
-               if (OSVersion.indexOf("Windows") >= 0) {
-                  var sep = "\\\\";
-                  path = path.replace(/\//g, sep);
-               } else {
-                  var sep = "/";
-               }
-
-               // Build a String to pass the path to the script.
-               // (Sounds more complicated than it is.)
-
-               path = path + sep + "payloads" + sep + "example.epr";
-
-               var pre = "$._PPP_.ingestFiles('";
-               var post = "'";
-               var postpost = ");";
-
-               var whole_megillah = pre + path + post + postpost;
-
-               csInterface.evalScript(whole_megillah);
-            }
-         });
-
-         $("#transcodeusingdefaultpreset").on("click", function (e) {
-            e.preventDefault();
-            var csInterface = new CSInterface();
-            var OSVersion = csInterface.getOSInformation();
-            var path = csInterface.getSystemPath(SystemPath.EXTENSION);
-
-            if (OSVersion) {
-               // The path always comes back with '/' path separators. Windows needs '\\'.
-               if (OSVersion.indexOf("Windows") >= 0) {
-                  var sep = "\\\\";
-                  path = path.replace(/\//g, sep);
-               } else {
-                  var sep = "/";
-               }
-
-               // Build a String to pass the path to the script.
-               // (Sounds more complicated than it is.)
-
-               path = path + sep + "payloads" + sep + "example.epr";
-
-               var pre = "$._PPP_.transcode('";
-               var post = "'";
-               var postpost = ")";
-
-               var whole_megillah = pre + path + post + postpost;
-
-               csInterface.evalScript(whole_megillah);
-            }
-         });
-      });
-   </script>
+   <script src="main.js" defer></script>
 </body>
 
 </html>

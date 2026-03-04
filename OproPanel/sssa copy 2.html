@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>MIDI Workstation Pro (WebMIDI Edition)</title>
+    <script src="midi.js"></script> 
+    <script src="CSInterface.js"></script>
+
+    <style>
+        body { background-color: #2b2b2b; color: #e0e0e0; font-family: "Microsoft YaHei", sans-serif; margin: 0; padding: 15px; display: flex; flex-direction: column; height: 95vh; overflow: hidden; user-select: none; }
+        .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+        .full-width { grid-column: span 2; }
+        .row { display: flex; gap: 10px; align-items: center; }
+        
+        button { background-color: #1f538d; color: white; border: none; padding: 8px; border-radius: 4px; cursor: pointer; font-size: 12px; transition: 0.2s; white-space: nowrap; }
+        button:hover { background-color: #143d6b; }
+        button:disabled { background-color: #444; color: #888; cursor: not-allowed; }
+        select { background-color: #3b3b3b; color: white; padding: 6px; border: 1px solid #555; border-radius: 4px; font-size: 12px;}
+        
+        .canvas-container { flex-grow: 1; background-color: #222; border: 1px solid #555; border-radius: 4px; position: relative; overflow: hidden; cursor: crosshair; margin-bottom: 10px;}
+        canvas { display: block; width: 100%; height: 100%; }
+        
+        .status-bar { font-size: 12px; color: #aaa; margin-top: 5px; display: flex; justify-content: space-between; }
+    </style>
+</head>
+<body>
+
+    <input type="file" id="midiFileInput" accept=".mid,.midi" style="display: none;" />
+
+    <div class="controls">
+        <button class="full-width" onclick="loadMidiNative()">📂 加载 MIDI 文件</button>
+        
+        <div class="full-width row">
+            <select id="trackSelect" disabled onchange="onTrackChanged()" style="flex-grow: 1;"></select>
+            <label><input type="checkbox" id="chkFullSong" onchange="drawPianoRoll()"> 整曲预览</label>
+        </div>
+    </div>
+
+    <div class="controls">
+        <button id="btnPlay" style="background-color: #2E8B57;" disabled onclick="togglePlay()">▶ 播放 / 暂停 (WebMIDI原生引擎)</button>
+        <button id="btnStop" style="background-color: #CD5C5C;" disabled onclick="stopPlayback()">⏹ 停止 / 复位</button>
+    </div>
+
+    <div class="canvas-container" id="canvasContainer">
+        <canvas id="pianoRoll"></canvas>
+    </div>
+
+    <button id="btnExport" class="full-width" style="background-color: #b87333; font-weight: bold;" disabled onclick="sendToPremiere()">⚡ 将选中轨道导入 Premiere</button>
+    
+    <div class="status-bar">
+        <span id="statusBar">初始化 WebMIDI...</span>
+        <span id="timeBar">00:00 / 00:00</span>
+    </div>
+
+    <script>
+        let parsedMidi = null;
+        let allTracksData = []; 
+        let currentTrackData = [];
+        let trackMetadata = []; // 用于存储每个轨道的乐器编号和分配的通道
+        let maxTime = 0;
+
+        let isPlaying = false;
+        let playbackTime = 0;
+        let lastTimestamp = 0;
+        let animationFrameId = null;
+        
+        let pendingNotes = [];
+        let activeNotes = []; 
+
+        let scaleX = 1.0, scaleY = 1.0;
+        let offsetX = 0, offsetY = 0;
+        let isDragging = false;
+        let dragStartX = 0, dragStartY = 0;
+
+        let midiOutput = null;
+
+        // 1. 获取系统原生 MIDI 合成器
+        if (navigator.requestMIDIAccess) {
+            navigator.requestMIDIAccess().then(access => {
+                const outputs = access.outputs.values();
+                for (let output of outputs) {
+                    midiOutput = output; // 默认连接 Microsoft GS Wavetable Synth
+                    break;
+                }
+                document.getElementById('statusBar').innerText = midiOutput ? `已连接系统引擎: ${midiOutput.name}` : "未找到硬件/虚拟 MIDI 输出端";
+            }).catch(err => {
+                document.getElementById('statusBar').innerText = "WebMIDI 权限被拒绝或浏览器不支持";
+            });
+        }
+
+        function loadMidiNative() {
+            const fileInput = document.getElementById('midiFileInput');
+            fileInput.value = '';
+            fileInput.onchange = function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        parsedMidi = new Midi(e.target.result);
+                        processMidiData();
+                        
+                        document.getElementById('trackSelect').disabled = false;
+                        document.getElementById('btnPlay').disabled = false;
+                        document.getElementById('btnStop').disabled = false;
+                        document.getElementById('btnExport').disabled = false;
+                    } catch (err) {
+                        alert("解析失败: " + err);
+                    }
+                };
+                reader.readAsArrayBuffer(file);
+            };
+            fileInput.click();
+        }
+
+        function processMidiData() {
+            allTracksData = [];
+            trackMetadata = [];
+            maxTime = 0;
+            const select = document.getElementById('trackSelect');
+            select.innerHTML = '';
+
+            // MIDI 通道 0-15，通道 9 (0-indexed) 是标准打击乐/鼓组通道
+            let availableChannels = [0, 1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12, 13, 14, 15];
+
+            parsedMidi.tracks.forEach((track, index) => {
+                if (track.notes.length > 0) {
+                    // 解析乐器信息并分配通道
+                    let isDrum = track.instrument ? track.instrument.percussion : false;
+                    let channel = isDrum ? 9 : (availableChannels.length > 0 ? availableChannels.shift() : 0);
+                    let programNumber = track.instrument ? track.instrument.number : 0;
+                    
+                    trackMetadata.push({
+                        trackIdx: index,
+                        channel: channel,
+                        program: programNumber,
+                        isDrum: isDrum
+                    });
+
+                    const trackNotes = track.notes.map(n => {
+                        const end = n.time + n.duration;
+                        if (end > maxTime) maxTime = end;
+                        return { 
+                            pitch: n.midi, 
+                            start: n.time, 
+                            duration: n.duration, 
+                            end: end, 
+                            trackIdx: index, 
+                            velocity: Math.floor(n.velocity * 127),
+                            channel: channel // 将通道号绑定到具体音符上
+                        };
+                    });
+                    allTracksData.push(...trackNotes);
+
+                    const name = track.name || (track.instrument ? track.instrument.name : "Untitled");
+                    const option = document.createElement('option');
+                    option.value = index;
+                    option.text = `Track ${index}: ${name} [${isDrum ? 'Drum' : 'CH'+channel}] (${track.notes.length})`;
+                    select.appendChild(option);
+                }
+            });
+
+            scaleX = 1.0; scaleY = 1.0; offsetX = 0; offsetY = 0;
+            if (select.options.length > 0) { select.selectedIndex = 0; onTrackChanged(); }
+        }
+
+        function onTrackChanged() {
+            stopPlayback();
+            const trackIndex = parseInt(document.getElementById('trackSelect').value);
+            // 提取当前选中轨道的通道号
+            const currentMeta = trackMetadata.find(m => m.trackIdx === trackIndex);
+            
+            currentTrackData = parsedMidi.tracks[trackIndex].notes.map(n => ({
+                pitch: n.midi, 
+                start: n.time, 
+                duration: n.duration, 
+                end: n.time + n.duration, 
+                velocity: Math.floor(n.velocity * 127),
+                channel: currentMeta.channel // 绑定通道
+            }));
+            drawPianoRoll();
+        }
+
+        // --- Canvas 绘制与交互 ---
+        const canvas = document.getElementById('pianoRoll');
+        const ctx = canvas.getContext('2d');
+
+        function drawPianoRoll() {
+            const container = document.getElementById('canvasContainer');
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+            const width = canvas.width;
+            const height = canvas.height;
+
+            ctx.clearRect(0, 0, width, height);
+            
+            const isFullSong = document.getElementById('chkFullSong').checked;
+            const dataToDraw = isFullSong ? allTracksData : currentTrackData;
+            if (dataToDraw.length === 0) return;
+
+            ctx.save();
+            ctx.translate(offsetX, offsetY);
+            ctx.scale(scaleX, scaleY);
+
+            let minP = 127, maxP = 0;
+            dataToDraw.forEach(n => {
+                if (n.pitch < minP) minP = n.pitch;
+                if (n.pitch > maxP) maxP = n.pitch;
+            });
+            minP = Math.max(0, minP - 2);
+            maxP = Math.min(127, maxP + 2);
+            const pitchRange = maxP - minP || 10;
+
+            dataToDraw.forEach(n => {
+                const x = (n.start / maxTime) * width;
+                const w = Math.max(2 / scaleX, (n.duration / maxTime) * width); 
+                const normalizedPitch = (n.pitch - minP) / pitchRange;
+                const h = (height / pitchRange) * 0.8;
+                const y = height - (normalizedPitch * height) - h;
+
+                // 鼓组通道(通道9)固定为灰色，其他轨道按索引染色
+                if (n.channel === 9) {
+                    ctx.fillStyle = "#888";
+                } else {
+                    ctx.fillStyle = isFullSong ? `hsl(${(n.trackIdx * 50) % 360}, 70%, 60%)` : "#4a90e2";
+                }
+                
+                ctx.fillRect(x, y, w, h);
+                ctx.lineWidth = 1 / scaleX;
+                ctx.strokeStyle = "#222";
+                ctx.strokeRect(x, y, w, h);
+            });
+
+            const playheadX = (playbackTime / maxTime) * width;
+            ctx.beginPath();
+            ctx.moveTo(playheadX, 0);
+            ctx.lineTo(playheadX, height);
+            ctx.lineWidth = 2 / scaleX;
+            ctx.strokeStyle = "#ff4757";
+            ctx.stroke();
+            
+            ctx.restore();
+
+            const fmt = (t) => `${Math.floor(t/60).toString().padStart(2,'0')}:${Math.floor(t%60).toString().padStart(2,'0')}`;
+            document.getElementById('timeBar').innerText = `${fmt(playbackTime)} / ${fmt(maxTime)}`;
+        }
+
+        // --- 鼠标拖拽与滚轮缩放 ---
+        canvas.addEventListener('mousedown', (e) => {
+            if (e.button === 1 || e.shiftKey) { 
+                isDragging = true;
+                dragStartX = e.clientX - offsetX;
+                dragStartY = e.clientY - offsetY;
+            } else { 
+                const rect = canvas.getBoundingClientRect();
+                const mouseX = e.clientX - rect.left;
+                const clickTime = ((mouseX - offsetX) / scaleX) / canvas.width * maxTime;
+                seekPlayback(Math.max(0, Math.min(clickTime, maxTime)));
+            }
+        });
+        canvas.addEventListener('mousemove', (e) => {
+            if (isDragging) { offsetX = e.clientX - dragStartX; offsetY = e.clientY - dragStartY; drawPianoRoll(); }
+        });
+        canvas.addEventListener('mouseup', () => isDragging = false);
+        canvas.addEventListener('mouseleave', () => isDragging = false);
+
+        canvas.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+            const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
+            offsetX = mouseX - (mouseX - offsetX) * zoomFactor;
+            offsetY = mouseY - (mouseY - offsetY) * zoomFactor;
+            scaleX *= zoomFactor;
+            scaleY *= zoomFactor;
+            drawPianoRoll();
+        });
+
+        // --- 播放引擎逻辑 ---
+        function togglePlay() { isPlaying ? stopPlayback() : startPlayback(); }
+
+        function seekPlayback(time) {
+            playbackTime = time;
+            if (isPlaying) { stopPlayback(); startPlayback(); } 
+            else { drawPianoRoll(); }
+        }
+
+        function startPlayback() {
+            if (maxTime === 0 || !midiOutput) return;
+            isPlaying = true;
+            document.getElementById('btnPlay').innerText = "⏸ 暂停";
+            lastTimestamp = performance.now();
+            
+            const isFullSong = document.getElementById('chkFullSong').checked;
+            
+            // 核心修复：播放前，向系统发送 Program Change (0xC0) 指令切换乐器
+            const currentTrackIdx = parseInt(document.getElementById('trackSelect').value);
+            const tracksToInit = isFullSong ? trackMetadata : trackMetadata.filter(m => m.trackIdx === currentTrackIdx);
+            
+            tracksToInit.forEach(meta => {
+                // 指令构成: 0xC0 (192) + 通道号. 随后跟乐器编号 (0-127)
+                // 注意：通道 9 (鼓组) 不需要发送乐器切换，Windows 会自动识别 9 通道为打击乐
+                if (meta.channel !== 9) {
+                    midiOutput.send([0xC0 | meta.channel, meta.program]);
+                }
+            });
+
+            const sourceData = isFullSong ? allTracksData : currentTrackData;
+            pendingNotes = sourceData.filter(n => n.start >= playbackTime).sort((a, b) => a.start - b.start);
+            activeNotes = [];
+
+            requestAnimationFrame(updatePlayhead);
+        }
+
+        function stopPlayback() {
+            isPlaying = false;
+            document.getElementById('btnPlay').innerText = "▶ 播放 / 暂停 (WebMIDI原生引擎)";
+            cancelAnimationFrame(animationFrameId);
+
+            if (midiOutput) {
+                // 发送 Note Off 掐断所有正在发声的音符
+                activeNotes.forEach(n => {
+                    midiOutput.send([0x80 | n.channel, n.pitch, 0]); 
+                });
+                activeNotes = [];
+
+                // 保底措施：向所有用到的通道发送 Control Change 123 (All Notes Off) 解决可能存在的残响
+                for(let i=0; i<16; i++) {
+                    midiOutput.send([0xB0 | i, 123, 0]);
+                }
+            }
+        }
+
+        function updatePlayhead(timestamp) {
+            if (!isPlaying) return;
+            const delta = (timestamp - lastTimestamp) / 1000; 
+            playbackTime += delta;
+            lastTimestamp = timestamp;
+
+            if (midiOutput) {
+                // 触发需要发声的音符 (0x90 + 对应通道)
+                while (pendingNotes.length > 0 && pendingNotes[0].start <= playbackTime) {
+                    const note = pendingNotes.shift();
+                    midiOutput.send([0x90 | note.channel, note.pitch, note.velocity || 100]); 
+                    activeNotes.push(note);
+                }
+
+                // 结束已经到达时间的音符 (0x80 + 对应通道)
+                for (let i = activeNotes.length - 1; i >= 0; i--) {
+                    if (activeNotes[i].end <= playbackTime) {
+                        midiOutput.send([0x80 | activeNotes[i].channel, activeNotes[i].pitch, 0]); 
+                        activeNotes.splice(i, 1);
+                    }
+                }
+            }
+
+            if (playbackTime >= maxTime) {
+                playbackTime = 0;
+                stopPlayback();
+            }
+            
+            drawPianoRoll();
+            animationFrameId = requestAnimationFrame(updatePlayhead);
+        }
+
+        // --- 导入 Premiere ---
+        function sendToPremiere() {
+            if (!currentTrackData.length) return;
+            const exportData = currentTrackData.map(n => ({ pitch: n.pitch, start_time: n.start }));
+            const encodedData = encodeURIComponent(JSON.stringify(exportData));
+            const csInterface = new CSInterface();
+            csInterface.evalScript('$._PPP_.importDataDirectly("' + encodedData + '")');
+        }
+    </script>
+</body>
+</html>

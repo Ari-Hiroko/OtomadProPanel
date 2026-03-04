@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>MIDI Workstation CEP</title>
+    <script src="midi.js"></script> 
+    <script src="CSInterface.js"></script>
+
+    <style>
+        /* 1. 外观复刻：暗色模式 */
+        body {
+            background-color: #2b2b2b;
+            color: #e0e0e0;
+            font-family: "Microsoft YaHei", sans-serif;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            height: 95vh;
+            overflow: hidden;
+        }
+
+        /* 顶部控制栏 */
+        .controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .full-width { grid-column: span 2; }
+
+        /* 按钮样式 */
+        button {
+            background-color: #1f538d;
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: background 0.2s;
+        }
+        button:hover { background-color: #143d6b; }
+        button:disabled { background-color: #444; cursor: not-allowed; color: #888; }
+        
+        .btn-play { background-color: #2E8B57; }
+        .btn-play:hover { background-color: #226B43; }
+        
+        .btn-stop { background-color: #CD5C5C; }
+        .btn-stop:hover { background-color: #A52A2A; }
+
+        .btn-export { background-color: #b87333; font-weight: bold; margin-top: 10px;}
+        .btn-export:hover { background-color: #8b5a2b; }
+
+        /* 下拉菜单 */
+        select {
+            background-color: #3b3b3b;
+            color: white;
+            padding: 8px;
+            border: 1px solid #555;
+            border-radius: 4px;
+            width: 100%;
+        }
+
+        /* 2. 核心组件：Canvas 预览区 */
+        .canvas-container {
+            flex-grow: 1;
+            background-color: #333;
+            border: 1px solid #555;
+            border-radius: 4px;
+            position: relative;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+        
+        canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        /* 底部状态栏 */
+        .status-bar {
+            font-size: 12px;
+            color: #888;
+            height: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <input type="file" id="midiFileInput" accept=".mid,.midi" style="display: none;" />
+
+    <div class="controls">
+        <button class="full-width" onclick="loadMidiNative()">📂 加载 MIDI 文件</button>
+        
+        <div class="full-width">
+            <label style="font-size: 12px; color: #aaa;">选择轨道:</label>
+            <select id="trackSelect" disabled onchange="onTrackChanged()"></select>
+        </div>
+
+        <button id="btnPlay" class="btn-play" disabled onclick="playPreview()">▶ 试听</button>
+        <button id="btnStop" class="btn-stop" disabled onclick="stopPreview()">⏹ 停止</button>
+    </div>
+
+    <div class="canvas-container" id="canvasContainer">
+        <canvas id="pianoRoll"></canvas>
+    </div>
+
+    <button id="btnExport" class="btn-export full-width" disabled onclick="sendToPremiere()">⚡ 导入到 Premiere</button>
+    
+    <div class="status-bar" id="statusBar">等待加载...</div>
+
+    <script>
+        // 全局变量
+        let parsedMidi = null;
+        let audioContext = null;
+        let activeOscillators = []; // 用于停止播放
+        let currentTrackData = [];  // 当前选中轨道的音符数据
+
+        // 1. 加载并解析 MIDI (逻辑移植自 Python)
+        function loadMidiNative() {
+            const fileInput = document.getElementById('midiFileInput');
+            fileInput.value = '';
+            
+            fileInput.onchange = function(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+
+                document.getElementById('statusBar').innerText = "正在解析: " + file.name + "...";
+
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        // 假设 midi.js 提供了全局 Midi 类 (如 @tonejs/midi)
+                        // 如果你的 midi.js 用法不同，请在此处调整
+                        parsedMidi = new Midi(e.target.result);
+                        
+                        updateTrackDropdown();
+                        document.getElementById('statusBar').innerText = "解析成功! BPM: " + (parsedMidi.header.tempos[0]?.bpm || 120).toFixed(1);
+                        
+                        // 启用按钮
+                        document.getElementById('trackSelect').disabled = false;
+                        document.getElementById('btnPlay').disabled = false;
+                        document.getElementById('btnStop').disabled = false;
+                        document.getElementById('btnExport').disabled = false;
+
+                    } catch (err) {
+                        alert("解析失败: " + err);
+                        console.error(err);
+                    }
+                };
+                reader.readAsArrayBuffer(file);
+            };
+            fileInput.click();
+        }
+
+        // 2. 更新轨道下拉菜单
+        function updateTrackDropdown() {
+            const select = document.getElementById('trackSelect');
+            select.innerHTML = '';
+
+            parsedMidi.tracks.forEach((track, index) => {
+                // 过滤掉空轨道，和 Python 逻辑一致
+                if (track.notes.length > 0) {
+                    const option = document.createElement('option');
+                    option.value = index;
+                    // 显示: Track 0: InstrumentName (150 notes)
+                    const name = track.name || track.instrument.name || "Untitled";
+                    option.text = `Track ${index}: ${name} (${track.notes.length} notes)`;
+                    select.appendChild(option);
+                }
+            });
+
+            // 默认选中第一个并触发绘制
+            if (select.options.length > 0) {
+                select.selectedIndex = 0;
+                onTrackChanged();
+            }
+        }
+
+        // 3. 轨道切换事件
+        function onTrackChanged() {
+            stopPreview(); // 切换轨道时停止播放
+            const trackIndex = document.getElementById('trackSelect').value;
+            const track = parsedMidi.tracks[trackIndex];
+            
+            // 提取核心数据
+            currentTrackData = track.notes.map(n => ({
+                pitch: n.midi,      // midi.js 通常用 .midi 或 .pitch
+                start: n.time,      // 秒
+                duration: n.duration, // 秒
+                end: n.time + n.duration
+            }));
+
+            drawPianoRoll();
+        }
+
+        // 4. 绘制钢琴卷帘图 (Canvas 实现 Python Matplotlib 功能)
+        function drawPianoRoll() {
+            const canvas = document.getElementById('pianoRoll');
+            const container = document.getElementById('canvasContainer');
+            
+            // 适配高分屏
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width = container.clientWidth * dpr;
+            canvas.height = container.clientHeight * dpr;
+            const ctx = canvas.getContext('2d');
+            ctx.scale(dpr, dpr);
+            
+            // 样式设置
+            ctx.fillStyle = "#333"; 
+            ctx.fillRect(0, 0, container.clientWidth, container.clientHeight);
+
+            if (currentTrackData.length === 0) return;
+
+            // 计算视口范围
+            const minTime = 0;
+            const maxTime = currentTrackData[currentTrackData.length - 1].end;
+            // 找出最低和最高音，用于垂直缩放
+            let minPitch = 127; 
+            let maxPitch = 0;
+            currentTrackData.forEach(n => {
+                if (n.pitch < minPitch) minPitch = n.pitch;
+                if (n.pitch > maxPitch) maxPitch = n.pitch;
+            });
+            
+            // 增加一点上下边距
+            minPitch = Math.max(0, minPitch - 2);
+            maxPitch = Math.min(127, maxPitch + 2);
+            const pitchRange = maxPitch - minPitch || 10;
+
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+
+            // 绘制网格 (可选)
+            ctx.strokeStyle = "#444";
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            // ... 省略网格绘制代码以保持简洁 ...
+            ctx.stroke();
+
+            // 绘制音符
+            ctx.fillStyle = "#4a90e2"; // 蓝色音符
+            
+            currentTrackData.forEach(note => {
+                // X轴映射: Time -> Pixel
+                const x = (note.start / maxTime) * width;
+                const w = Math.max(1, (note.duration / maxTime) * width); // 至少1px宽
+                
+                // Y轴映射: Pitch -> Pixel (注意 Canvas Y轴向下，高音在上方)
+                // normalizedPitch 0(低) -> 1(高)
+                const normalizedPitch = (note.pitch - minPitch) / pitchRange;
+                const h = (height / pitchRange) * 0.8; // 音符高度
+                const y = height - (normalizedPitch * height) - h; 
+
+                ctx.fillRect(x, y, w, h);
+                
+                // 边框
+                ctx.strokeStyle = "#8ecae6";
+                ctx.lineWidth = 0.5;
+                ctx.strokeRect(x, y, w, h);
+            });
+        }
+
+        // 5. 音频预览 (Web Audio API - 无需外部依赖)
+        function playPreview() {
+            if (!currentTrackData.length) return;
+            stopPreview(); // 防止重叠
+
+            // 创建音频上下文
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            audioContext = new AudioContext();
+
+            const now = audioContext.currentTime;
+
+            currentTrackData.forEach(note => {
+                // 创建振荡器
+                const osc = audioContext.createOscillator();
+                const gain = audioContext.createGain();
+
+                osc.type = 'triangle'; // 三角波听起来像 8-bit 游戏，比正弦波清晰
+                // MIDI 音高转频率公式
+                osc.frequency.value = 440 * Math.pow(2, (note.pitch - 69) / 12);
+
+                // 包络设置 (防止爆音)
+                gain.gain.setValueAtTime(0, now + note.start);
+                gain.gain.linearRampToValueAtTime(0.1, now + note.start + 0.01); // 攻击
+                gain.gain.setValueAtTime(0.1, now + note.end - 0.01);
+                gain.gain.linearRampToValueAtTime(0, now + note.end); // 释放
+
+                osc.connect(gain);
+                gain.connect(audioContext.destination);
+
+                osc.start(now + note.start);
+                osc.stop(now + note.end);
+
+                activeOscillators.push(osc);
+            });
+            
+            document.getElementById('statusBar').innerText = "🎵 正在播放...";
+        }
+
+        function stopPreview() {
+            if (activeOscillators.length > 0) {
+                activeOscillators.forEach(osc => {
+                    try { osc.stop(); } catch(e){}
+                });
+                activeOscillators = [];
+            }
+            if (audioContext) {
+                audioContext.close();
+                audioContext = null;
+            }
+            document.getElementById('statusBar').innerText = "⏹ 停止";
+        }
+
+        // 6. 发送数据到 ExtendScript
+        function sendToPremiere() {
+            if (!currentTrackData || currentTrackData.length === 0) return;
+
+            // 按照后端需要的格式整理数据
+            // Python: {"pitch": 60, "start_time": 1.2}
+            const exportData = currentTrackData.map(n => ({
+                pitch: n.pitch,
+                start_time: n.start
+            }));
+
+            // 编码并发送
+            const jsonString = JSON.stringify(exportData);
+            const encodedData = encodeURIComponent(jsonString);
+
+            const csInterface = new CSInterface();
+            csInterface.evalScript('$._PPP_.importDataDirectly("' + encodedData + '")');
+        }
+    </script>
+</body>
+</html>

@@ -7,6 +7,11 @@ const timelineData = [
       open: true, // true 表示默认展开，false 表示收起
       items: [
          {
+            version: "v0.06",
+            date: "2026/2/27",
+            content: "增加直接MIDI功能"
+         },
+         {
             version: "v0.05",
             date: "2026/2/25",
             content: "修了json功能，并且加了一个确认框，同时将native改成普通input"

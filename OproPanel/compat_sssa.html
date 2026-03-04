@@ -1,0 +1,686 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>飞八分钱 - 兼容版</title>
+  <script src="./lib/CSInterface.js"></script>
+  <script src="./lib/jquery-1.9.1.js"></script>
+  <script src="./lib/Vulcan.js"></script>
+  <script src="midi.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 10px;
+      height: 100vh;
+      overflow: hidden;
+      font-family: Arial, "Microsoft YaHei", sans-serif;
+      background: #2b2b2b;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      user-select: none;
+    }
+    .panel {
+      background: #2b2b2b;
+      border: 1px solid #3d3d3d;
+      border-radius: 4px;
+      padding: 10px;
+      margin-bottom: 8px;
+      flex-shrink: 0;
+    }
+    .toolbar {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 8px;
+    }
+    .toolbar:last-child { margin-bottom: 0; }
+    .btn {
+      background: #444;
+      color: #fff;
+      border: 1px solid #666;
+      border-radius: 4px;
+      padding: 6px 12px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn.primary { background: #1f538d; border-color: #2d6bb0; }
+    .btn.accent { background: #0078d4; border-color: #0078d4; }
+    .btn.good { background: #44b676; border-color: #44b676; }
+    .btn.warn { background: #cd5c5c; border-color: #cd5c5c; }
+    .switch-wrap {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      color: #ddd;
+    }
+    .range {
+      width: 140px;
+      accent-color: #4daafc;
+    }
+    .canvas-container {
+      flex: 1 1 30%;
+      min-height: 150px;
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 4px;
+      overflow: hidden;
+      position: relative;
+      cursor: ew-resize;
+      margin-bottom: 8px;
+    }
+    canvas { width: 100%; height: 100%; display: block; }
+    .bottom-console {
+      flex: 1 1 45%;
+      display: flex;
+      gap: 10px;
+      overflow-y: auto;
+      padding-right: 5px;
+    }
+    .console {
+      flex: 1;
+      background: #2b2b2b;
+      border: 1px solid #3d3d3d;
+      border-radius: 4px;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .title {
+      font-size: 13px;
+      font-weight: bold;
+      color: #4daafc;
+      border-bottom: 1px solid #444;
+      padding-bottom: 4px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .track-row {
+      display: grid;
+      grid-template-columns: 4fr 3fr 3fr;
+      gap: 8px;
+      align-items: center;
+      background: #222;
+      border-radius: 4px;
+      padding: 6px;
+      font-size: 12px;
+    }
+    .btn-solo {
+      background: #333;
+      color: #aaa;
+      border: 1px solid #555;
+      border-radius: 3px;
+      cursor: pointer;
+      padding: 2px 6px;
+      font-size: 11px;
+    }
+    .btn-solo.active {
+      background: #f1c40f;
+      color: #000;
+      border-color: #f39c12;
+      font-weight: bold;
+    }
+    .select, .input {
+      width: 100%;
+      background: #333;
+      color: #fff;
+      border: 1px solid #555;
+      border-radius: 4px;
+      padding: 6px 8px;
+      font-size: 12px;
+    }
+    .editor-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      font-size: 12px;
+    }
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    .status {
+      margin-top: 8px;
+      font-size: 12px;
+      color: #aaa;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-shrink: 0;
+    }
+    .mono { font-family: Consolas, monospace; }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #1e1e1e; }
+    ::-webkit-scrollbar-thumb { background: #444; border-radius: 3px; }
+  </style>
+</head>
+<body>
+  <input type="file" id="midiFileInput" accept=".mid,.midi" style="display:none;">
+
+  <div class="panel">
+    <div class="toolbar">
+      <button class="btn accent" onclick="document.getElementById('midiFileInput').click()">📂 载入 MIDI</button>
+      <label class="switch-wrap">
+        <input type="checkbox" id="chkFullSong" checked onchange="drawPianoRoll()">
+        整曲预览
+      </label>
+      <div style="flex:1"></div>
+      <label style="font-size:12px;color:#ccc">主音量:</label>
+      <input id="masterVolume" class="range" type="range" min="0" max="2" step="0.05" value="1.0" onchange="updateMasterVolume()">
+    </div>
+    <div class="toolbar">
+      <button id="btnPlay" class="btn good" disabled onclick="togglePlay()">▶ 播放</button>
+      <button id="btnStop" class="btn warn" disabled onclick="stopPlayback()">⏹ 停止</button>
+      <div style="flex:1"></div>
+      <button id="btnExport" class="btn" style="border-color:#ff9f43" disabled onclick="sendToPremiere()">⚡ 导入 Premiere</button>
+    </div>
+  </div>
+
+  <div class="canvas-container" id="canvasContainer">
+    <canvas id="pianoRoll"></canvas>
+  </div>
+
+  <div class="bottom-console">
+    <div class="console" style="flex:3">
+      <div class="title">🎚️ 轨道混音器</div>
+      <div id="trackMixerContainer" style="display:flex;flex-direction:column;gap:4px;overflow-y:visible;">
+        <div style="color:#666;font-size:12px;padding:10px">请先载入 MIDI 文件以配置轨道。</div>
+      </div>
+    </div>
+
+    <div class="console" style="flex:2">
+      <div class="title">
+        🎛️ 乐器编辑器
+        <div>
+          <button class="btn-solo" onclick="addNewPreset()">➕ 新建</button>
+          <button class="btn-solo" onclick="deletePreset()">🗑️ 删除</button>
+        </div>
+      </div>
+      <div class="editor-grid">
+        <div class="control-group" style="grid-column:span 2">
+          <label>编辑目标 (自定义预设):</label>
+          <select id="editTarget" class="select" onchange="loadPresetToUI()"></select>
+        </div>
+        <div class="control-group">
+          <label>波形 (Wave):</label>
+          <select id="editWave" class="select" onchange="savePresetFromUI()">
+            <option value="pulse">Pulse</option>
+            <option value="triangle">Triangle</option>
+            <option value="sine">Sine</option>
+            <option value="sawtooth">Sawtooth</option>
+            <option value="noise">Noise</option>
+          </select>
+        </div>
+        <div class="control-group">
+          <label>占空比: <span id="vDuty">0.50</span></label>
+          <input id="editDuty" class="input" type="range" min="0.01" max="0.99" step="0.01" value="0.5" onchange="savePresetFromUI()">
+        </div>
+        <div class="control-group">
+          <label>起音 (A): <span id="vA">0.01</span></label>
+          <input id="editA" class="input" type="range" min="0" max="1" step="0.01" value="0.01" onchange="savePresetFromUI()">
+        </div>
+        <div class="control-group">
+          <label>衰减 (D): <span id="vD">0.10</span></label>
+          <input id="editD" class="input" type="range" min="0" max="1" step="0.01" value="0.1" onchange="savePresetFromUI()">
+        </div>
+        <div class="control-group">
+          <label>延音 (S): <span id="vS">0.50</span></label>
+          <input id="editS" class="input" type="range" min="0" max="1" step="0.01" value="0.5" onchange="savePresetFromUI()">
+        </div>
+        <div class="control-group">
+          <label>释放 (R): <span id="vR">0.10</span></label>
+          <input id="editR" class="input" type="range" min="0" max="2" step="0.01" value="0.1" onchange="savePresetFromUI()">
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:auto;padding-top:10px;">
+        <button class="btn primary" style="flex:1" onclick="testPreset()">🎹 试听</button>
+        <button class="btn" style="flex:1" onclick="resetPresets()">🔄 恢复默认</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="status">
+    <span id="statusBar">等待操作...</span>
+    <span id="timeBar" class="mono">00:00.0 / 00:00.0</span>
+  </div>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      if (window.__adobe_cep__) {
+        try {
+          var csInterfaceTheme = new CSInterface();
+          var hostEnv = csInterfaceTheme.getHostEnvironment();
+          if (hostEnv && hostEnv.appSkinInfo && hostEnv.appSkinInfo.panelBackgroundColor) {
+            var c = hostEnv.appSkinInfo.panelBackgroundColor.color;
+            document.body.style.backgroundColor = "rgb(" + Math.round(c.red) + ", " + Math.round(c.green) + ", " + Math.round(c.blue) + ")";
+          }
+          csInterfaceTheme.addEventListener(CSInterface.THEME_COLOR_CHANGED_EVENT, function () {
+            var updated = csInterfaceTheme.getHostEnvironment();
+            if (updated && updated.appSkinInfo && updated.appSkinInfo.panelBackgroundColor) {
+              var uc = updated.appSkinInfo.panelBackgroundColor.color;
+              document.body.style.backgroundColor = "rgb(" + Math.round(uc.red) + ", " + Math.round(uc.green) + ", " + Math.round(uc.blue) + ")";
+            }
+          });
+        } catch (e) {}
+      }
+    });
+
+    var DEFAULT_PRESETS = {
+      lead: { wave: "pulse", duty: 0.125, attack: 0.01, decay: 0.1, sustain: 0.3, release: 0.1 },
+      bass: { wave: "triangle", duty: 0.5, attack: 0.05, decay: 0.2, sustain: 0.8, release: 0.15 },
+      pad: { wave: "sine", duty: 0.5, attack: 0.4, decay: 0.3, sustain: 0.6, release: 0.6 },
+      drum: { wave: "noise", duty: 0.5, attack: 0.001, decay: 0.1, sustain: 0.0, release: 0.05 }
+    };
+
+    var SynthPresets = JSON.parse(localStorage.getItem("midi_synth_presets")) || JSON.parse(JSON.stringify(DEFAULT_PRESETS));
+    var TrackSettings = JSON.parse(localStorage.getItem("midi_track_settings")) || {};
+    var parsedMidi = null, allTracksData = [], maxTime = 0;
+    var scaleX = 1.0, offsetX = 0, isDragging = false, dragStartX = 0;
+    var audioCtx = null, masterGainNode = null, isPlaying = false;
+    var playbackTime = 0, startTimeBase = 0, scheduleTimer = null, visualTimer = null, pendingNotes = [];
+    var soloTrackIndex = -1, preSoloStates = {};
+
+    function renderPresetDropdowns() {
+      var editTarget = document.getElementById("editTarget");
+      var currentEditVal = editTarget.value || "lead";
+      editTarget.innerHTML = "";
+      Object.keys(SynthPresets).forEach(function (key) {
+        var opt = document.createElement("option");
+        opt.value = key;
+        opt.innerText = key;
+        if (key === currentEditVal) opt.selected = true;
+        editTarget.appendChild(opt);
+      });
+      setTimeout(function () { editTarget.value = currentEditVal; }, 50);
+      renderMixerUI();
+    }
+
+    function loadPresetToUI() {
+      var target = document.getElementById("editTarget").value;
+      var p = SynthPresets[target];
+      if (!p) return;
+      document.getElementById("editWave").value = p.wave;
+      document.getElementById("editDuty").value = p.duty;
+      document.getElementById("editA").value = p.attack;
+      document.getElementById("editD").value = p.decay;
+      document.getElementById("editS").value = p.sustain;
+      document.getElementById("editR").value = p.release;
+      updatePresetLabels(p);
+    }
+
+    function updatePresetLabels(p) {
+      document.getElementById("vDuty").innerText = parseFloat(p.duty).toFixed(2);
+      document.getElementById("vA").innerText = parseFloat(p.attack).toFixed(2);
+      document.getElementById("vD").innerText = parseFloat(p.decay).toFixed(2);
+      document.getElementById("vS").innerText = parseFloat(p.sustain).toFixed(2);
+      document.getElementById("vR").innerText = parseFloat(p.release).toFixed(2);
+    }
+
+    function savePresetFromUI() {
+      var target = document.getElementById("editTarget").value;
+      var p = {
+        wave: document.getElementById("editWave").value,
+        duty: parseFloat(document.getElementById("editDuty").value),
+        attack: parseFloat(document.getElementById("editA").value),
+        decay: parseFloat(document.getElementById("editD").value),
+        sustain: parseFloat(document.getElementById("editS").value),
+        release: parseFloat(document.getElementById("editR").value)
+      };
+      SynthPresets[target] = p;
+      localStorage.setItem("midi_synth_presets", JSON.stringify(SynthPresets));
+      updatePresetLabels(p);
+    }
+
+    function addNewPreset() {
+      var name = prompt("请输入自定义乐器名称 (如 Synth_80s):");
+      if (!name || name.trim() === "") return;
+      if (SynthPresets[name]) return alert("乐器名称已存在！");
+      SynthPresets[name] = JSON.parse(JSON.stringify(SynthPresets[document.getElementById("editTarget").value]));
+      localStorage.setItem("midi_synth_presets", JSON.stringify(SynthPresets));
+      renderPresetDropdowns();
+      setTimeout(function () {
+        document.getElementById("editTarget").value = name;
+        loadPresetToUI();
+      }, 100);
+    }
+
+    function deletePreset() {
+      var target = document.getElementById("editTarget").value;
+      if (["lead", "bass", "pad", "drum"].indexOf(target) !== -1) return alert("基础默认乐器无法删除，但你可以修改它们的参数！");
+      if (!confirm("确定要删除乐器 [" + target + "] 吗？")) return;
+      delete SynthPresets[target];
+      Object.keys(TrackSettings).forEach(function (k) { if (TrackSettings[k].preset === target) TrackSettings[k].preset = "lead"; });
+      localStorage.setItem("midi_synth_presets", JSON.stringify(SynthPresets));
+      localStorage.setItem("midi_track_settings", JSON.stringify(TrackSettings));
+      renderPresetDropdowns();
+      setTimeout(function () {
+        document.getElementById("editTarget").value = "lead";
+        loadPresetToUI();
+      }, 100);
+    }
+
+    function resetPresets() {
+      if (!confirm("确定要恢复所有预设到初始状态吗？这将清空你的自定义参数。")) return;
+      SynthPresets = JSON.parse(JSON.stringify(DEFAULT_PRESETS));
+      localStorage.setItem("midi_synth_presets", JSON.stringify(SynthPresets));
+      renderPresetDropdowns();
+      loadPresetToUI();
+    }
+
+    renderPresetDropdowns();
+    setTimeout(loadPresetToUI, 100);
+
+    document.getElementById("midiFileInput").addEventListener("change", function (e) {
+      var file = e.target.files[0];
+      if (!file) return;
+      var reader = new FileReader();
+      reader.onload = function (ev) {
+        try {
+          parsedMidi = new Midi(ev.target.result);
+          processMidiData();
+          document.getElementById("btnPlay").disabled = false;
+          document.getElementById("btnStop").disabled = false;
+          document.getElementById("btnExport").disabled = false;
+          document.getElementById("statusBar").innerText = "解析完毕: " + file.name;
+        } catch (err) {
+          alert("MIDI 解析失败: " + err);
+        }
+      };
+      reader.readAsArrayBuffer(file);
+      this.value = "";
+    });
+
+    function processMidiData() {
+      allTracksData = [];
+      maxTime = 0;
+      soloTrackIndex = -1;
+      preSoloStates = {};
+      parsedMidi.tracks.forEach(function (track, index) {
+        if (track.notes.length > 0) {
+          var isDrum = track.instrument ? track.instrument.percussion : false;
+          var defaultPreset = isDrum ? "drum" : (track.notes.some(function (n) { return n.midi < 45; }) ? "bass" : "lead");
+          if (!TrackSettings[index]) TrackSettings[index] = { preset: defaultPreset, volume: 1.0, active: true };
+          track.notes.forEach(function (n) {
+            var end = n.time + n.duration;
+            if (end > maxTime) maxTime = end;
+            allTracksData.push({ pitch: n.midi, start: n.time, duration: n.duration, end: end, trackIdx: index, isDrum: isDrum, velocity: n.velocity });
+          });
+        }
+      });
+      scaleX = 1.0;
+      offsetX = 0;
+      renderMixerUI();
+    }
+
+    function renderMixerUI() {
+      var mixerContainer = document.getElementById("trackMixerContainer");
+      if (!parsedMidi) return;
+      mixerContainer.innerHTML = "";
+      parsedMidi.tracks.forEach(function (track, index) {
+        if (track.notes.length > 0) {
+          var name = track.name || (track.instrument ? track.instrument.name : "Track " + index);
+          var row = document.createElement("div");
+          row.className = "track-row";
+          var optionsHTML = "";
+          Object.keys(SynthPresets).forEach(function (key) {
+            var selected = TrackSettings[index].preset === key ? "selected" : "";
+            optionsHTML += "<option value=\"" + key + "\" " + selected + ">" + key + "</option>";
+          });
+          var isSolo = soloTrackIndex === index;
+          var isActive = TrackSettings[index].active;
+          row.innerHTML =
+            "<div style=\"display:flex;align-items:center;gap:6px;overflow:hidden;\">" +
+            "<input type=\"checkbox\" id=\"chk_" + index + "\" " + (isActive ? "checked" : "") + " onchange=\"updateTrackSetting(" + index + ")\">" +
+            "<button class=\"btn-solo " + (isSolo ? "active" : "") + "\" onclick=\"toggleSolo(" + index + ")\" title=\"独奏该轨道\">S</button>" +
+            "<span style=\"overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:" + (isActive ? "bold" : "normal") + ";color:" + (isActive ? "#fff" : "#666") + ";\" title=\"" + name + "\">[" + index + "] " + name + "</span>" +
+            "</div>" +
+            "<select class=\"select\" id=\"sel_" + index + "\" onchange=\"updateTrackSetting(" + index + ")\">" + optionsHTML + "</select>" +
+            "<div style=\"display:flex;align-items:center;gap:4px;\">" +
+            "<span style=\"color:#aaa;\">Vol:</span>" +
+            "<input class=\"input\" style=\"padding:0;border:none;\" type=\"range\" id=\"vol_" + index + "\" min=\"0\" max=\"2\" step=\"0.05\" value=\"" + TrackSettings[index].volume + "\" onchange=\"updateTrackSetting(" + index + ")\">" +
+            "</div>";
+          mixerContainer.appendChild(row);
+        }
+      });
+      drawPianoRoll();
+    }
+
+    function updateTrackSetting(index) {
+      if (soloTrackIndex !== -1 && soloTrackIndex !== index) soloTrackIndex = -1;
+      var isActive = document.getElementById("chk_" + index).checked;
+      var preset = document.getElementById("sel_" + index).value;
+      var volume = parseFloat(document.getElementById("vol_" + index).value);
+      TrackSettings[index] = { preset: preset, volume: volume, active: isActive };
+      localStorage.setItem("midi_track_settings", JSON.stringify(TrackSettings));
+      renderMixerUI();
+    }
+
+    function toggleSolo(index) {
+      if (soloTrackIndex === index) {
+        Object.keys(TrackSettings).forEach(function (k) { TrackSettings[k].active = preSoloStates[k] !== undefined ? preSoloStates[k] : true; });
+        soloTrackIndex = -1;
+      } else {
+        if (soloTrackIndex === -1) {
+          preSoloStates = {};
+          Object.keys(TrackSettings).forEach(function (k) { preSoloStates[k] = TrackSettings[k].active; });
+        }
+        Object.keys(TrackSettings).forEach(function (k) { TrackSettings[k].active = parseInt(k, 10) === index; });
+        soloTrackIndex = index;
+      }
+      localStorage.setItem("midi_track_settings", JSON.stringify(TrackSettings));
+      renderMixerUI();
+    }
+
+    var canvas = document.getElementById("pianoRoll");
+    var ctx = canvas.getContext("2d", { alpha: false });
+
+    function drawPianoRoll() {
+      var container = document.getElementById("canvasContainer");
+      if (container.clientWidth === 0 || container.clientHeight === 0) return;
+      canvas.width = container.clientWidth;
+      canvas.height = container.clientHeight;
+      ctx.fillStyle = "#1a1a1a";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      if (allTracksData.length === 0) return;
+
+      var activeData = document.getElementById("chkFullSong").checked
+        ? allTracksData.filter(function (n) { return TrackSettings[n.trackIdx] && TrackSettings[n.trackIdx].active; })
+        : allTracksData;
+      if (activeData.length === 0) return;
+
+      var minP = 127, maxP = 0;
+      activeData.forEach(function (n) {
+        if (n.pitch < minP) minP = n.pitch;
+        if (n.pitch > maxP) maxP = n.pitch;
+      });
+      minP = Math.max(0, minP - 2);
+      maxP = Math.min(127, maxP + 2);
+      var pitchRange = maxP - minP || 10;
+      var noteHeight = Math.max(2, (canvas.height / pitchRange) * 0.85);
+
+      activeData.forEach(function (n) {
+        var x = (n.start / maxTime) * canvas.width * scaleX + offsetX;
+        var w = Math.max(2, (n.duration / maxTime) * canvas.width * scaleX);
+        if (x + w < 0 || x > canvas.width) return;
+        var y = canvas.height - ((n.pitch - minP) / pitchRange) * canvas.height - noteHeight;
+        var isDrumPreset = (TrackSettings[n.trackIdx] && TrackSettings[n.trackIdx].preset === "drum") || n.isDrum;
+        ctx.fillStyle = isDrumPreset ? "#888" : "hsl(" + ((n.trackIdx * 137.5) % 360) + ", 75%, 65%)";
+        ctx.fillRect(x | 0, y | 0, w | 0, noteHeight | 0);
+      });
+
+      var playheadX = (playbackTime / maxTime) * canvas.width * scaleX + offsetX;
+      if (playheadX >= 0 && playheadX <= canvas.width) {
+        ctx.fillStyle = "#ff4757";
+        ctx.fillRect((playheadX | 0) - 1, 0, 2, canvas.height);
+      }
+      document.getElementById("timeBar").innerText =
+        (Math.floor(playbackTime / 60).toString().padStart(2, "0")) + ":" + ((playbackTime % 60).toFixed(1).padStart(4, "0")) +
+        " / " + (Math.floor(maxTime / 60).toString().padStart(2, "0")) + ":" + ((maxTime % 60).toFixed(1).padStart(4, "0"));
+    }
+
+    canvas.addEventListener("mousedown", function (e) {
+      if (e.button === 1 || e.shiftKey || e.button === 2) {
+        isDragging = true;
+        dragStartX = e.clientX - offsetX;
+      } else {
+        seekTo(Math.max(0, Math.min(((e.clientX - canvas.getBoundingClientRect().left - offsetX) / scaleX / canvas.width) * maxTime, maxTime)));
+      }
+    });
+    canvas.addEventListener("mousemove", function (e) {
+      if (isDragging) {
+        offsetX = e.clientX - dragStartX;
+        if (!isPlaying) requestAnimationFrame(drawPianoRoll);
+      } else if (e.buttons === 1 && !e.shiftKey) {
+        seekTo(Math.max(0, Math.min(((e.clientX - canvas.getBoundingClientRect().left - offsetX) / scaleX / canvas.width) * maxTime, maxTime)));
+      }
+    });
+    window.addEventListener("mouseup", function () { isDragging = false; });
+    canvas.addEventListener("contextmenu", function (e) { e.preventDefault(); });
+    canvas.addEventListener("wheel", function (e) {
+      e.preventDefault();
+      var zoom = e.deltaY > 0 ? 0.85 : 1.15;
+      offsetX = e.clientX - canvas.getBoundingClientRect().left - (e.clientX - canvas.getBoundingClientRect().left - offsetX) * zoom;
+      scaleX *= zoom;
+      if (!isPlaying) requestAnimationFrame(drawPianoRoll);
+    });
+    window.addEventListener("resize", function () { if (!isPlaying) drawPianoRoll(); });
+
+    function updateMasterVolume() {
+      if (masterGainNode) masterGainNode.gain.value = parseFloat(document.getElementById("masterVolume").value);
+    }
+
+    function createPulseWave(context, duty) {
+      var terms = 32;
+      var real = new Float32Array(terms), imag = new Float32Array(terms);
+      for (var i = 1; i < terms; i++) real[i] = (2 / (i * Math.PI)) * Math.sin(i * Math.PI * duty);
+      return context.createPeriodicWave(real, imag, { disableNormalization: false });
+    }
+
+    function createNoiseBuffer(context) {
+      var bufferSize = context.sampleRate * 2;
+      var buffer = context.createBuffer(1, bufferSize, context.sampleRate);
+      var output = buffer.getChannelData(0);
+      for (var i = 0; i < bufferSize; i++) output[i] = Math.random() * 2 - 1;
+      return buffer;
+    }
+
+    function testPreset() {
+      if (!audioCtx) initAudio();
+      if (audioCtx.state === "suspended") audioCtx.resume();
+      var target = document.getElementById("editTarget").value;
+      var preset = SynthPresets[target];
+      playSynthNote({ pitch: 60, start: 0, end: 0.5, velocity: 1.0 }, audioCtx.currentTime, preset, 1.0);
+    }
+
+    function initAudio() {
+      if (audioCtx) audioCtx.close();
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      masterGainNode = audioCtx.createGain();
+      masterGainNode.gain.value = parseFloat(document.getElementById("masterVolume").value);
+      masterGainNode.connect(audioCtx.destination);
+    }
+
+    function togglePlay() { isPlaying ? stopPlayback() : startPlayback(); }
+    function seekTo(time) {
+      playbackTime = time;
+      if (isPlaying) { stopPlayback(); startPlayback(); } else { drawPianoRoll(); }
+    }
+
+    function startPlayback() {
+      if (maxTime === 0) return;
+      isPlaying = true;
+      document.getElementById("btnPlay").innerHTML = "⏸ 暂停";
+      initAudio();
+      var activeData = allTracksData.filter(function (n) { return TrackSettings[n.trackIdx] && TrackSettings[n.trackIdx].active; });
+      pendingNotes = activeData.filter(function (n) { return n.start >= playbackTime; }).sort(function (a, b) { return a.start - b.start; });
+      startTimeBase = audioCtx.currentTime - playbackTime;
+      scheduleTimer = setInterval(scheduleAudio, 25);
+      visualTimer = requestAnimationFrame(updateVisuals);
+    }
+
+    function stopPlayback() {
+      isPlaying = false;
+      document.getElementById("btnPlay").innerHTML = "▶ 播放";
+      clearInterval(scheduleTimer);
+      cancelAnimationFrame(visualTimer);
+      if (audioCtx) { audioCtx.close(); audioCtx = null; }
+    }
+
+    function scheduleAudio() {
+      if (!isPlaying || !audioCtx) return;
+      var lookaheadTime = audioCtx.currentTime - startTimeBase + 0.1;
+      while (pendingNotes.length > 0 && pendingNotes[0].start <= lookaheadTime) {
+        var note = pendingNotes.shift();
+        var tSet = TrackSettings[note.trackIdx];
+        var preset = SynthPresets[tSet.preset] || SynthPresets.lead;
+        playSynthNote(note, startTimeBase, preset, tSet.volume);
+      }
+    }
+
+    function playSynthNote(note, baseTime, preset, trackVolume) {
+      if (!audioCtx || trackVolume <= 0) return;
+      var playTime = baseTime + note.start;
+      var stopTime = baseTime + note.end;
+      var freq = 440 * Math.pow(2, (note.pitch - 69) / 12);
+      var noteGain = audioCtx.createGain();
+      var maxVol = Math.max(0.001, (note.velocity || 0.8) * 0.4 * trackVolume);
+      noteGain.gain.setValueAtTime(0, playTime);
+      noteGain.gain.linearRampToValueAtTime(maxVol, playTime + preset.attack);
+      noteGain.gain.linearRampToValueAtTime(maxVol * preset.sustain, playTime + preset.attack + preset.decay);
+      noteGain.gain.setValueAtTime(maxVol * preset.sustain, stopTime);
+      noteGain.gain.linearRampToValueAtTime(0, stopTime + preset.release);
+      noteGain.connect(masterGainNode);
+
+      var source;
+      if (preset.wave === "noise") {
+        source = audioCtx.createBufferSource();
+        source.buffer = createNoiseBuffer(audioCtx);
+        source.loop = true;
+        var filter = audioCtx.createBiquadFilter();
+        filter.type = "lowpass";
+        filter.frequency.setValueAtTime(freq * 4, playTime);
+        filter.frequency.exponentialRampToValueAtTime(100, playTime + 0.1);
+        source.connect(filter);
+        filter.connect(noteGain);
+      } else {
+        source = audioCtx.createOscillator();
+        if (preset.wave === "pulse") source.setPeriodicWave(createPulseWave(audioCtx, preset.duty));
+        else source.type = preset.wave;
+        source.frequency.value = freq;
+        source.connect(noteGain);
+      }
+      source.start(playTime);
+      source.stop(stopTime + preset.release + 0.1);
+    }
+
+    function updateVisuals() {
+      if (!isPlaying || !audioCtx) return;
+      playbackTime = audioCtx.currentTime - startTimeBase;
+      if (playbackTime >= maxTime) {
+        playbackTime = 0;
+        stopPlayback();
+        drawPianoRoll();
+        return;
+      }
+      drawPianoRoll();
+      visualTimer = requestAnimationFrame(updateVisuals);
+    }
+
+    function sendToPremiere() {
+      var activeData = allTracksData.filter(function (n) { return TrackSettings[n.trackIdx] && TrackSettings[n.trackIdx].active; });
+      if (!activeData.length) return alert("没有选中任何激活的轨道用于导出！");
+      var exportData = activeData.map(function (n) { return { pitch: n.pitch, start_time: n.start }; });
+      var csInterface = new CSInterface();
+      csInterface.evalScript('$._PPP_.importDataDirectly("' + encodeURIComponent(JSON.stringify(exportData)) + '")');
+    }
+  </script>
+</body>
+</html>

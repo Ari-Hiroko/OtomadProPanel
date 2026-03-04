@@ -4048,5 +4048,67 @@ $._PPP_ = {
         } catch (e) {
             alert("JSX Error: " + e.message + " (Line " + e.line + ")");
         }
+    },
+    
+    importDataDirectly: function(encodedData) {
+        try {
+            var activeSeq = app.project.activeSequence;
+            if (!activeSeq) {
+                alert("Error: No active sequence selected. Please select a timeline.");
+                return;
+            }
+
+            // 1. Identify the selected item in the Project Panel
+            var itemToInsert = null;
+            var viewIDs = app.getProjectViewIDs();
+            if (viewIDs && viewIDs.length > 0) {
+                var selectedItems = app.getProjectViewSelection(viewIDs[0]);
+                if (selectedItems && selectedItems.length > 0) {
+                    itemToInsert = selectedItems[0];
+                }
+            }
+
+            // Ensure a valid media item (not a bin) is selected
+            if (!itemToInsert || itemToInsert.type === 2) {
+                alert("Error: Please select a valid media item in the Project Panel (folders/bins are not allowed).");
+                return;
+            }
+
+            // 2. Decode and parse the passed JSON data
+            // Use decodeURIComponent to safely decode the string passed from JS
+            var decodedString = decodeURIComponent(encodedData);
+            var notes = eval('(' + decodedString + ')');
+
+            if (!notes || notes.length === 0) {
+                alert("Error: Parsed note data is empty.");
+                return;
+            }
+
+            var confirmMsg = "Confirm action:\n\nInsert [" + itemToInsert.name + "] " + notes.length + " times?";
+            if (!confirm(confirmMsg, false, "YTPMV Insertion Confirm")) {
+                return; 
+            }
+
+            // 3. Target the top video track
+            var topTrackIndex = activeSeq.videoTracks.numTracks - 1;
+            var targetVTrack = activeSeq.videoTracks[topTrackIndex];
+
+            // 4. Use absolute Ticks for frame-perfect accuracy
+            var TICKS_PER_SECOND = 254016000000;
+
+            for (var i = 0; i < notes.length; i++) {
+                var startTimeSec = parseFloat(notes[i].start_time);
+                
+                if (!isNaN(startTimeSec)) {
+                    var exactTicks = String(Math.round(startTimeSec * TICKS_PER_SECOND));
+                    targetVTrack.overwriteClip(itemToInsert, exactTicks);
+                }
+            }
+
+            alert("Success! Inserted " + notes.length + " clips to the top track.");
+
+        } catch (e) {
+            alert("JSX Error: " + e.message + " (Line " + e.line + ")");
+        }
     }
 };

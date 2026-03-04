@@ -1,8 +1,9 @@
 <!doctype html>
-<html>
+<html lang="zh-CN">
 <title>顺飞面板青春版</title>
 
 <head>
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
    <meta charset="utf-8">
    <script src="./lib/CSInterface.js"></script>
    <script src="./lib/jquery-1.9.1.js"></script>
@@ -219,10 +220,11 @@
          <input type="file" id="jsonFileInput" accept=".json" style="display: none;" />
 
          <div class="button-group">
+            <button class="controlBg" onclick="openCompatSssaPanel()">飞八分钱</button>
             <button class="controlBg" onclick="loadJsonNative()">读取 JSON</button>
             <button class="controlBg" onClick="evalScript('$._PPP_.select1()')">从第一个序列开始选择</button>
             <button class="controlBg" onClick="evalScript('$._PPP_.select2()')">从第二个序列开始选择</button>
-            <button class="controlBg" onclick="tieba()">关注Mizzle吧谢谢喵</button>
+            <button class="controlBg" id="btn_PPRO_JSON" onclick="tieba()">关注Mizzle吧谢谢喵</button>
          </div>
       </div>
    </div>
@@ -528,22 +530,37 @@
                UI</button>
             <button class="controlBg" id="web_Ge_B"
                onClick="openExternalSite('https://gemini.google.com/', '我就喜欢玩这个')">Gemini</button>
+            <button class="controlBg" id="Compat_B" onclick="window.location.href='compat_index.html'">兼容版主页</button>
          </div>
       </div>
    </div>
 
    <div class="card">
       <div class="card-header">
-         <h2>更新内容 - 2026/2/24</h2>
+         <h2>更新内容</h2>
       </div>
       <div class="card-content">
-         <p>添加了一堆广告。</p>
+         <p>我添加了一堆广告。</p>
          <button class="controlBg" style="background-color: #34bfd1;" onClick="alert('艾雅米诺')">👎差评</button>
       </div>
    </div>
    </div>
+   <script src="timeline.js"></script>
    <script src="main.js"></script>
    <script>
+      function openCompatSssaPanel() {
+         if (window.__adobe_cep__) {
+            try {
+               var csInterface = new CSInterface();
+               csInterface.requestOpenExtension("com.s.OProPanel.compat.sssa");
+               return;
+            } catch (e) {
+               console.log("打开兼容窗口失败，回退到页面跳转: ", e);
+            }
+         }
+         window.location.href = "./compat_sssa.html";
+      }
+
       function executeFreeSelect() {
          var cycleLength = document.getElementById('cycleLengthSelect').value;
          var targetIndex = document.getElementById('targetIndexSelect').value;

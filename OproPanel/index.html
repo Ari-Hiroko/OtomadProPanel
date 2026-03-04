@@ -135,6 +135,8 @@
                   <p style="font-size: small">因为我喜欢YTPMV，所以我叫它YTPMV操作</p>
                </div>
                <div class="card-content">
+                  <fluent-button class="controlBg textStyle"
+                     onclick="openSssaPanel()">飞八分钱</fluent-button>
                   <input type="file" id="jsonFileInput" accept=".json" style="display: none" />
                   <fluent-button class="controlBg textStyle" onclick="loadJsonNative()">
                      读取 JSON
@@ -464,6 +466,20 @@
             </fluent-card>
 
             <script src="timeline.js"></script>
+            <script>
+               function openSssaPanel() {
+                  if (window.__adobe_cep__) {
+                     try {
+                        var csInterface = new CSInterface();
+                        csInterface.requestOpenExtension("com.s.OProPanel.sssa");
+                        return;
+                     } catch (e) {
+                        console.log("打开飞八分钱窗口失败，回退到页面跳转: ", e);
+                     }
+                  }
+                  window.location.href = "./sssa.html";
+               }
+            </script>
          </main>
    </fluent-provider>
 </body>

@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="zh-CN">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Document</title>
+	</head>
+   <script src="Midi.js"></script>
+	<body>
+		<style>
+			/* 简单的暗色主题适配 */
+			.midi-workstation {
+				background-color: #2b2b2b;
+				color: white;
+				font-family: "Microsoft YaHei", sans-serif;
+				padding: 15px;
+			}
+			.control-panel {
+				margin-bottom: 15px;
+			}
+			button,
+			select {
+				margin-right: 10px;
+				padding: 5px 10px;
+				cursor: pointer;
+			}
+			canvas {
+				background-color: #333333;
+				border: 1px solid #555;
+				width: 100%;
+				height: 200px;
+			}
+		</style>
+
+		<div class="midi-workstation">
+			<div class="control-panel">
+				<button id="btnLoadFile">📂 加载 MIDI 文件</button>
+				<span id="lblFileInfo">未选择文件...</span>
+			</div>
+
+			<div class="control-panel">
+				<label>选择轨道: </label>
+				<select id="comboTrack" disabled></select>
+			</div>
+
+			<div class="control-panel">
+				<button
+					id="btnPlay"
+					disabled
+					style="background-color: #2e8b57; color: white">
+					▶ 试听选中轨道
+				</button>
+				<button
+					id="btnStop"
+					disabled
+					style="background-color: #cd5c5c; color: white">
+					⏹ 停止
+				</button>
+				<button
+					id="btnInsert"
+					disabled
+					style="background-color: #b87333; color: white">
+					⚡ 插入到 Premiere
+				</button>
+			</div>
+
+			<canvas id="pianoRollCanvas" width="800" height="200"></canvas>
+		</div>
+
+		<input
+			type="file"
+			id="midiFileInput"
+			accept=".mid,.midi"
+			style="display: none" />
+	</body>
+	<script>
+		// --- 全局状态变量 ---
+		var parsedMidiData = null; // 存储解析后的完整 MIDI 对象
+		var currentTrackNotes = []; // 当前选中轨道的音符数据
+		var audioContext = null; // Web Audio API 上下文
+		var activeOscillators = []; // 存储正在播放的音频节点，用于停止
+
+		window.onload = function () {
+			var btnLoad = document.getElementById("btnLoadFile");
+			var fileInput = document.getElementById("midiFileInput");
+			var comboTrack = document.getElementById("comboTrack");
+			var btnPlay = document.getElementById("btnPlay");
+			var btnStop = document.getElementById("btnStop");
+			var btnInsert = document.getElementById("btnInsert");
+
+			// 1. 触发文件选择
+			btnLoad.onclick = function () {
+				fileInput.value = "";
+				fileInput.click();
+			};
+
+			// 2. 读取并解析 MIDI 文件
+			fileInput.onchange = function (event) {
+				var file = event.target.files[0];
+				if (!file) return;
+
+				document.getElementById("lblFileInfo").innerText =
+					"加载中: " + file.name;
+
+				var reader = new FileReader();
+				reader.onload = function (e) {
+					try {
+						// 假设你的 midi.js 提供的是类似于 @tonejs/midi 的构造函数
+						parsedMidiData = new Midi(e.target.result);
+
+						// 清空并填充轨道下拉菜单
+						comboTrack.innerHTML = "";
+						parsedMidiData.tracks.forEach(function (track, index) {
+							var option = document.createElement("option");
+							option.value = index;
+							// 显示轨道名称和音符数量
+							var trackName = track.name || "Track " + index;
+							option.text =
+								index +
+								": " +
+								trackName +
+								" (" +
+								track.notes.length +
+								" notes)";
+							comboTrack.appendChild(option);
+						});
+
+						// 启用 UI 控件
+						comboTrack.disabled = false;
+						btnPlay.disabled = false;
+						btnStop.disabled = false;
+						btnInsert.disabled = false;
+
+						// 触发一次更改事件，渲染第一条轨道
+						comboTrack.onchange();
+					} catch (err) {
+						alert("MIDI 解析失败: " + err);
+					}
+				};
+				reader.readAsArrayBuffer(file);
+			};
+
+			// 3. 轨道切换事件：提取数据并重绘图表
+			comboTrack.onchange = function () {
+				var trackIndex = parseInt(this.value);
+				var track = parsedMidiData.tracks[trackIndex];
+
+				// 整理当前轨道的音符数据
+				currentTrackNotes = track.notes.map(function (note) {
+					return {
+						pitch: note.pitch,
+						start_time: note.time,
+						duration: note.duration || 0.2, // 如果解析器没提供 duration，给个默认值
+					};
+				});
+
+				// 按时间排序
+				currentTrackNotes.sort(function (a, b) {
+					return a.start_time - b.start_time;
+				});
+
+				// 渲染图表
+				renderPianoRoll(currentTrackNotes);
+				// 切换轨道时停止当前正在播放的声音
+				stopAudioPreview();
+			};
+
+			// 4. 插入到 Premiere (调用上一轮写好的 JSX 通讯)
+			btnInsert.onclick = function () {
+				if (currentTrackNotes.length === 0) {
+					alert("当前轨道没有音符！");
+					return;
+				}
+				var jsonString = JSON.stringify(currentTrackNotes);
+				var encodedData = encodeURIComponent(jsonString);
+				var csInterface = new CSInterface();
+				csInterface.evalScript(
+					'$._PPP_.importDataDirectly("' + encodedData + '")',
+				);
+			};
+
+			// 5. 音频播放与停止绑定
+			btnPlay.onclick = function () {
+				playAudioPreview(currentTrackNotes);
+			};
+			btnStop.onclick = stopAudioPreview;
+		};
+
+		// ================= 图形预览 (Canvas) =================
+		function renderPianoRoll(notes) {
+			var canvas = document.getElementById("pianoRollCanvas");
+			var ctx = canvas.getContext("2d");
+			var width = canvas.width;
+			var height = canvas.height;
+
+			// 清空画布
+			ctx.clearRect(0, 0, width, height);
+
+			if (!notes || notes.length === 0) {
+				ctx.fillStyle = "white";
+				ctx.fillText("无音符数据", 10, 20);
+				return;
+			}
+
+			// 计算 X 轴（时间）和 Y 轴（音高）的极值，用于缩放映射
+			var maxTime = Math.max.apply(
+				Math,
+				notes.map(function (n) {
+					return n.start_time + n.duration;
+				}),
+			);
+			var minPitch = Math.min.apply(
+				Math,
+				notes.map(function (n) {
+					return n.pitch;
+				}),
+			);
+			var maxPitch = Math.max.apply(
+				Math,
+				notes.map(function (n) {
+					return n.pitch;
+				}),
+			);
+			var pitchRange = maxPitch - minPitch || 1; // 防止除以 0
+
+			// 绘制音符
+			ctx.fillStyle = "#00BFFF"; // 亮蓝色音符
+			notes.forEach(function (note) {
+				// 将时间映射到 X 轴像素
+				var x = (note.start_time / maxTime) * width;
+				var noteWidth = (note.duration / maxTime) * width;
+
+				// 将音高映射到 Y 轴像素 (音高越高，Y坐标越小/越靠上)
+				var y =
+					height - ((note.pitch - minPitch) / pitchRange) * (height - 20) - 10;
+
+				// 确保哪怕 duration 很短，至少渲染 2 个像素宽
+				ctx.fillRect(x, y, Math.max(noteWidth, 2), 6);
+			});
+		}
+
+		// ================= 音频预览 (Web Audio API) =================
+		function playAudioPreview(notes) {
+			stopAudioPreview(); // 播放前先清理
+
+			if (!notes || notes.length === 0) return;
+
+			// 初始化 Web Audio API 上下文 (兼容不同浏览器)
+			var AudioContext = window.AudioContext || window.webkitAudioContext;
+			if (!audioContext) audioContext = new AudioContext();
+
+			// 如果上下文处于挂起状态，恢复它（浏览器安全策略）
+			if (audioContext.state === "suspended") {
+				audioContext.resume();
+			}
+
+			// 创建一个全局增益节点（控制音量，防止破音）
+			var masterGain = audioContext.createGain();
+			masterGain.gain.value = 0.15; // 设置为 15% 音量
+			masterGain.connect(audioContext.destination);
+
+			var startTime = audioContext.currentTime + 0.1; // 预留 0.1 秒缓冲时间
+
+			// 使用 Web Audio API 的绝对时间调度来精确安排每一个音符的发声
+			notes.forEach(function (note) {
+				var osc = audioContext.createOscillator();
+				osc.type = "triangle"; // 使用三角波，听起来比正弦波更像一点基础电子乐器
+
+				// 将 MIDI 音高转换为频率 (标准公式)
+				var frequency = 440 * Math.pow(2, (note.pitch - 69) / 12);
+				osc.frequency.setValueAtTime(frequency, audioContext.currentTime);
+
+				osc.connect(masterGain);
+
+				// 安排开始和结束时间
+				var noteStart = startTime + note.start_time;
+				var noteEnd = noteStart + note.duration;
+
+				osc.start(noteStart);
+				osc.stop(noteEnd);
+
+				activeOscillators.push(osc);
+			});
+		}
+
+		function stopAudioPreview() {
+			if (activeOscillators.length > 0) {
+				activeOscillators.forEach(function (osc) {
+					try {
+						osc.stop();
+						osc.disconnect();
+					} catch (e) {
+						// 忽略已经结束的振荡器抛出的异常
+					}
+				});
+				activeOscillators = [];
+			}
+		}
+	</script>
+</html>

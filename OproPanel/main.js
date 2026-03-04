@@ -215,6 +215,63 @@ function loadJsonNative() {
    // 模拟点击，唤起原生的文件选择窗口
    fileInput.click();
 }
+function loadMidiNative() {
+    var fileInput = document.getElementById('midiFileInput');
+    fileInput.value = ''; // Reset
+    
+    fileInput.onchange = function(event) {
+        var file = event.target.files[0];
+        if (!file) return;
+
+        var reader = new FileReader();
+        reader.onload = function(e) {
+            // 读取文件的 ArrayBuffer
+            var arrayBuffer = e.target.result;
+            
+            try {
+                // 调用你根目录 midi.js 的解析方法
+                // 注意：这里以市面上最主流的 @tonejs/midi 语法为例 (new Midi)
+                // 如果你的 midi.js API 不同，只需将下方提取 pitch 和 time 的字段名稍作替换即可
+                var midi = new Midi(arrayBuffer); 
+                var notesData = [];
+
+                // 遍历所有轨道，提取音符数据 (相当于把你 Python 里 combo_track 选轨合并了)
+                midi.tracks.forEach(function(track) {
+                    track.notes.forEach(function(note) {
+                        notesData.push({
+                            "pitch": note.pitch,      // 音高
+                            "start_time": note.time   // 开始时间 (秒)
+                        });
+                    });
+                });
+
+                if (notesData.length === 0) {
+                    alert("Error: No notes found in this MIDI file.");
+                    return;
+                }
+
+                // 按时间顺序对音符进行排序
+                notesData.sort(function(a, b) { return a.start_time - b.start_time; });
+
+                // 将数据转为 JSON 字符串，并使用 encodeURIComponent 编码，确保安全穿透 evalScript
+                var jsonString = JSON.stringify(notesData);
+                var encodedData = encodeURIComponent(jsonString);
+
+                var csInterface = new CSInterface();
+                // 传递给后端的 JSX
+                csInterface.evalScript('$._PPP_.importDataDirectly("' + encodedData + '")');
+
+            } catch (err) {
+                alert("Error parsing MIDI: " + err);
+            }
+        };
+        
+        // 触发读取
+        reader.readAsArrayBuffer(file);
+    };
+    
+    fileInput.click();
+}
 function tieba() {
    // 獲取插件與 Adobe 宿主通信的接口
    var cs = new CSInterface();

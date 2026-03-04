@@ -1,83 +1,101 @@
 * {
-    color: var(--neutral-foreground-rest);
+	color: var(--neutral-foreground-rest);
 }
-
+::-webkit-scrollbar {
+	width: 6px;
+}
+::-webkit-scrollbar-track {
+	background: #1e1e1e;
+}
+::-webkit-scrollbar-thumb {
+	background: #444;
+	border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+	background: #555;
+}
 html,
 body {
-    overflow: hidden;
+	overflow: hidden;
 }
 
 body {
-    padding: 10px; /* from inline */
-    background-color: var(--fill-color); /* from inline */
-    color: var(--neutral-foreground-rest); /* same in both */
-    margin: 0; /* same in both */
-    font-family: 'Segoe UI',-apple-system, BlinkMacSystemFont, 'Roboto', 'Helvetica Neue', sans-serif; /* from file */
-    height: 100vh; /* from inline */
-    box-sizing: border-box; /* from inline */
+	padding: 10px; /* from inline */
+	background-color: var(--fill-color); /* from inline */
+	color: var(--neutral-foreground-rest); /* same in both */
+	margin: 0; /* same in both */
+	font-family:
+		"Segoe UI",
+		-apple-system,
+		BlinkMacSystemFont,
+		"Roboto",
+		"Helvetica Neue",
+		sans-serif; /* from file */
+	height: 100vh; /* from inline */
+	box-sizing: border-box; /* from inline */
 }
 
 fluent-provider {
-    height: 100vh;
-    overflow-y: auto;
-    display: block;
+	height: 100vh;
+	overflow-y: auto;
+	display: block;
 }
 
 #titlec {
-    display: block; /* 覆盖了 .card-container 的 grid，必须是 block 才能用浮动 */
-    overflow: hidden; 
-    padding: 16px;
-    margin: .0rem .1rem;
-    margin-bottom:0;
-    padding-bottom: 0;
+	display: block; /* 覆盖了 .card-container 的 grid，必须是 block 才能用浮动 */
+	overflow: hidden;
+	padding: 16px;
+	margin: 0rem 0.1rem;
+	margin-bottom: 0;
+	padding-bottom: 0;
 }
 
 .floating {
-    float: right; 
-    margin-left: 16px; /* 给左侧文字留点呼吸空间 */
-    margin-bottom: 8px; 
+	float: right;
+	margin-left: 16px; /* 给左侧文字留点呼吸空间 */
+	margin-bottom: 8px;
 }
 
 .action-block {
-    display: flex;
-    /* flex-direction: column; 让头像和下方的 ccb 保持上下堆叠 */
-    align-items: center; /* 整体居中对齐 */
+	display: flex;
+	/* flex-direction: column; 让头像和下方的 ccb 保持上下堆叠 */
+	align-items: center; /* 整体居中对齐 */
 }
 
 .ccb {
-    display: flex;
-    justify-content: space-around;
-    flex-direction: column;
-    align-items: center;
-    padding: 0;
-    /* margin-top: 8px; */
-    margin: .25rem;
-    margin-left: 1rem;
+	display: flex;
+	justify-content: space-around;
+	flex-direction: column;
+	align-items: center;
+	padding: 0;
+	/* margin-top: 8px; */
+	margin: 0.25rem;
+	margin-left: 1rem;
 }
 
 .info-block {
-    /* 删除 display: flex 和所有 flex 相关的属性 */
-    display: block; 
-    margin-top: 0;
-    line-height: 2;
+	/* 删除 display: flex 和所有 flex 相关的属性 */
+	display: block;
+	margin-top: 0;
+	line-height: 2;
 }
 
 .info-block p {
-    margin: 0 0 1.5rem 0; /* 用 bottom-margin 替代原来的 flex gap */
-    word-break: break-all; /* 防止长序列号无法换行 */
+	margin: 0 0 1.5rem 0; /* 用 bottom-margin 替代原来的 flex gap */
+	word-break: break-all; /* 防止长序列号无法换行 */
 }
 
 .header {
-    margin-bottom: 2rem;
-    padding: 1rem;
-    border-bottom: 1px solid var(--neutral-stroke-divider-rest);
+	margin-bottom: 2rem;
+	padding: 1rem;
+	border-bottom: 1px solid var(--neutral-stroke-divider-rest);
 }
-#FrS{
-   display: grid;
-   grid-row: 2;
-   grid-template-columns:1fr 1fr min-content;
-   justify-content: space-around;
-   justify-items: stretch;
+#FrS {
+	display: grid;
+	grid-row: 2;
+	grid-template-columns: 1fr 1fr min-content;
+	justify-content: space-around;
+	justify-items: stretch;
 }
 
 /* .info-block {
@@ -95,147 +113,149 @@ fluent-provider {
 } */
 
 .card-container {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-    gap: 1.5rem;
-    padding: 1rem;
-    margin-bottom:1rem;
-    background-color: transparent; /* from inline */
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+	gap: 1.5rem;
+	padding: 1rem;
+	margin-bottom: 1rem;
+	background-color: transparent; /* from inline */
 }
 
-
 .card-header h2 {
-    margin: 0 0 1rem 0;
-    font-size: 1.2rem;
-    font-weight: 600;
+	margin: 0 0 1rem 0;
+	font-size: 1.2rem;
+	font-weight: 600;
 }
 
 .card-content {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem; /* Space between buttons */
-    flex-grow: 1;
+	display: flex;
+	flex-direction: column;
+	gap: 0.75rem; /* Space between buttons */
+	flex-grow: 1;
 }
 
 fluent-button {
-    width: 100%;
+	width: 100%;
 }
-.card-header{
-    padding:1rem 1rem 0 1rem;
+.card-header {
+	padding: 1rem 1rem 0 1rem;
 }
-.card-content{
-    padding:0 1rem 1rem 1rem;
+.card-content {
+	padding: 0 1rem 1rem 1rem;
 }
 .droppable {
-    padding: 1rem;
-    border: 2px dashed var(--neutral-stroke-rest);
-    text-align: center;
-    cursor: grab;
-    background-color: var(--neutral-layer-2);
-    border-radius: 4px;
+	padding: 1rem;
+	border: 2px dashed var(--neutral-stroke-rest);
+	text-align: center;
+	cursor: grab;
+	background-color: var(--neutral-layer-2);
+	border-radius: 4px;
 }
-main.card-container{
-   margin-top: 0;
-   padding-top: 0;
+main.card-container {
+	margin-top: 0;
+	padding-top: 0;
 }
 /* 1. 强制允许卡片和内容区域溢出，防止下拉菜单被「砍断」 */
 fluent-card {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-    
-    /* 暴力三连，必须带 !important */
-    contain: none !important; 
-    content-visibility: visible !important;
-    overflow: visible !important;
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+
+	/* 暴力三连，必须带 !important */
+	contain: none !important;
+	content-visibility: visible !important;
+	overflow: visible !important;
 }
 
 /* 2. 修正 fluent-select 在 Grid 布局下的显示与层级 */
 fluent-select {
-    min-width: 100px; /* 防止在 1fr 分配下被挤压得太窄 */
-    z-index: 9999;    /* 提升层级，确保它盖在其他元素之上 */
+	min-width: 100px; /* 防止在 1fr 分配下被挤压得太窄 */
+	z-index: 9999; /* 提升层级，确保它盖在其他元素之上 */
 }
 
 /* 3. 限制下拉列表（Shadow DOM 内部）的最大高度 */
 fluent-select::part(listbox) {
-    max-height: 150px !important; /* 面板较小时，限制弹窗高度出滚动条，防止溢出屏幕 */
-    z-index: 9999 !important;
+	max-height: 150px !important; /* 面板较小时，限制弹窗高度出滚动条，防止溢出屏幕 */
+	z-index: 9999 !important;
+   
 }
-.FSLT{
-   contain: none !important;
-   overflow: visible !important;
+.FSLT {
+	contain: none !important;
+	overflow: visible !important;
 }
 
 /* 1. 修正 Grid 容器，确保三列（两个组 + 一个按钮）依然对齐 */
 #FrS {
-   display: grid;
-   grid-template-columns: 1fr 1fr auto; /* 自动分配宽度给两个组，按钮占最小空间 */
-   gap: 12px;
-   align-items: start; /* 顶部对齐，防止被拉长 */
+	display: grid;
+	grid-template-columns: 1fr 1fr auto; /* 自动分配宽度给两个组，按钮占最小空间 */
+	gap: 12px;
+	align-items: start; /* 顶部对齐，防止被拉长 */
 }
 
 /* 2. 包装容器：让内部元素垂直堆叠 */
 .select-group {
-   display: flex;
-   flex-direction: column;
-   gap: 4px; /* 标签、选择框、辅助文本之间的间距 */
+	display: flex;
+	flex-direction: column;
+	gap: 4px; /* 标签、选择框、辅助文本之间的间距 */
 }
 
 /* 3. 上方标签样式 */
 .select-label {
-   font-size: 12px;
-   font-weight: 600;
-   color: var(--neutral-foreground-rest);
-   opacity: 0.9;
+	font-size: 12px;
+	font-weight: 600;
+	color: var(--neutral-foreground-rest);
+	opacity: 0.9;
 }
 
 /* 4. 下方辅助/示例文本样式 */
 .helper-text {
-   font-size: 10px;
-   color: var(--neutral-foreground-rest);
-   opacity: 65%; /* 经典的灰色提示文字 */
-   line-height: 1.5;
-   margin-top: 2px;
+	font-size: 10px;
+	color: var(--neutral-foreground-rest);
+	opacity: 65%; /* 经典的灰色提示文字 */
+	line-height: 1.5;
+	margin-top: 2px;
 }
 
 /* 确保选择框在容器内占满宽度 */
 fluent-select {
-   width: 100%;
-   min-width: 120px;
+	width: 100%;
+	min-width: 120px;
 }
 
 fluent-button {
-    /* 对 fluent 内部的背景变量设置过渡 */
-    transition: background-color 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+	/* 对 fluent 内部的背景变量设置过渡 */
+	transition: background-color 0.8s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* 如果你想让它悬浮时稍微发光 */
 fluent-button:hover {
-    filter: brightness(1.2);
-    box-shadow: 0 0 10px rgba(141, 141, 141, 0.121);
-    transition: box-shadow 0.2s ease, filter 0.2s ease;
+	filter: brightness(1.2);
+	box-shadow: 0 0 10px rgba(141, 141, 141, 0.121);
+	transition:
+		box-shadow 0.2s ease,
+		filter 0.2s ease;
 }
 
 /* 1. 给整棵树加一个紧箍咒，限制最大宽度，这是触发换行的前提 */
 fluent-tree-view {
-    max-width: 100%;
-    overflow-x: hidden; /* 防止万一出现横向滚动条 */
+	max-width: 100%;
+	overflow-x: hidden; /* 防止万一出现横向滚动条 */
 }
 
 /* 2. 允许节点高度自适应，并在宿主层级允许换行 */
 fluent-tree-item {
-    height: auto !important;
-    white-space: normal !important; 
+	height: auto !important;
+	white-space: normal !important;
 }
 
 /* 3. 【核心修正】穿透正确的内部结构：content-region 和 positioning-region */
 fluent-tree-item::part(positioning-region),
 fluent-tree-item::part(content-region) {
-    height: auto !important;
-    white-space: normal !important; /* 强制破除内部的 nowrap 限制 */
-    word-wrap: break-word;          /* 允许长单词/URL截断换行 */
-    overflow-wrap: break-word;
-    line-height: 1.5;               /* 换行后需要一点行高才不显得拥挤 */
-    padding-top: 4px;
-    padding-bottom: 4px;
+	height: auto !important;
+	white-space: normal !important; /* 强制破除内部的 nowrap 限制 */
+	word-wrap: break-word; /* 允许长单词/URL截断换行 */
+	overflow-wrap: break-word;
+	line-height: 1.5; /* 换行后需要一点行高才不显得拥挤 */
+	padding-top: 4px;
+	padding-bottom: 4px;
 }

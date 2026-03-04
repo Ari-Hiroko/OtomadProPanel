@@ -1,0 +1,630 @@
+<!doctype html>
+<html lang="zh-CN">
+	<head>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<meta charset="utf-8" />
+		<script src="./lib/CSInterface.js"></script>
+		<script src="./lib/jquery-1.9.1.js"></script>
+		<script src="./ext.js"></script>
+		<script src="./lib/Vulcan.js"></script>
+		<script src="main.js"></script>
+		<script type="module" src="web-components.js"></script>
+		<script type="module" src="fluentplus.js"></script>
+		<link id="ppstyle" href="css/style.css" rel="stylesheet" type="text/css" />
+		<link rel="stylesheet" href="css/treefl.css" />
+
+		<script src="midi.js"></script>
+		<style>
+			body {
+				font-family: "Microsoft YaHei", sans-serif;
+				margin: 0;
+				padding: 15px;
+				display: flex;
+				flex-direction: column;
+				height: 95vh;
+				overflow: hidden;
+				user-select: none;
+			}
+			.controls {
+				display: grid;
+				grid-template-columns: 1fr 1fr;
+				gap: 8px;
+				margin-bottom: 10px;
+			}
+			.full-width {
+				grid-column: span 2;
+			}
+			.row {
+				display: flex;
+				gap: 10px;
+				align-items: center;
+			}
+			.mode-panel {
+				/* background: #333; */
+				padding: 10px;
+				border-radius: 4px;
+				/* border: 1px solid #444; */
+				margin-bottom: 10px;
+				font-size: 12px;
+				display: flex;
+				flex-direction: column;
+				gap: 8px;
+			}
+			.canvas-container {
+				flex-grow: 1;
+				/* background-color: #222;
+				border: 1px solid #555; */
+				border-radius: 4px;
+				position: relative;
+				overflow: hidden;
+				cursor: crosshair;
+			}
+			canvas {
+				display: block;
+				width: 100%;
+				height: 100%;
+			}
+			.status-bar {
+				font-size: 12px;
+				/* color: #aaa; */
+				margin-top: 5px;
+				display: flex;
+				justify-content: space-between;
+			}
+			fluent-button {
+				min-width: 100px;
+			}
+			fluent-select {
+				width: 100%;
+			}
+		</style>
+		<script type="module">
+			import {
+				baseLayerLuminance,
+				StandardLuminance,
+			} from "./web-components.js";
+
+			document.addEventListener("DOMContentLoaded", function () {
+				var csInterface = new CSInterface();
+				const provider = document.querySelector("fluent-provider");
+
+				// 1. 定义更新主题的函数
+				function updateThemeWithAppSkinInfo(appSkinInfo) {
+					if (!appSkinInfo || !provider) return;
+
+					// 获取 Premiere 面板的背景 RGB 颜色
+					const panelBgColor = appSkinInfo.panelBackgroundColor.color;
+
+					// 将 Adobe 的 RGB 对象转换为 CSS 颜色字符串
+					const bgRgb = `rgb(${Math.round(panelBgColor.red)}, ${Math.round(panelBgColor.green)}, ${Math.round(panelBgColor.blue)})`;
+
+					// 计算粗略的亮度值 (0-255) 以判断是深色还是浅色模式
+					// Premiere 默认通常是深色，但用户可以调得很亮
+					const luminance =
+						0.299 * panelBgColor.red +
+						0.587 * panelBgColor.green +
+						0.114 * panelBgColor.blue;
+
+					// 根据亮度决定 Fluent UI 的模式
+					// 128 是中点，小于 128 为暗色，大于为亮色
+					if (luminance < 128) {
+						baseLayerLuminance.setValueFor(
+							provider,
+							StandardLuminance.DarkMode,
+						);
+					} else {
+						baseLayerLuminance.setValueFor(
+							provider,
+							StandardLuminance.LightMode,
+						);
+					}
+
+					// 核心：强制 body 的背景色与 Premiere 面板背景色完全一致
+					// 这样可以消除 Fluent UI 默认暗色与 Premiere 默认暗色之间的微小色差
+					document.body.style.backgroundColor = bgRgb;
+
+					// 如果你的卡片有背景色，也可以在这里动态覆盖，保持无缝融合
+					// document.body.style.setProperty('--fill-color', bgRgb);
+				}
+
+				// 2. 页面加载时，获取当前的宿主环境颜色并初始化
+				const hostEnv = csInterface.getHostEnvironment();
+				if (hostEnv && hostEnv.appSkinInfo) {
+					updateThemeWithAppSkinInfo(hostEnv.appSkinInfo);
+				} else {
+					// 如果在浏览器里调试(没有CEP环境)，默认给暗色
+					baseLayerLuminance.setValueFor(provider, StandardLuminance.DarkMode);
+				}
+
+				// 3. 监听 Premiere Pro 的主题变化事件 (当用户在首选项里拖动滑块时触发)
+				csInterface.addEventListener(
+					CSInterface.THEME_COLOR_CHANGED_EVENT,
+					function () {
+						// 重新获取环境信息并更新
+						const updatedHostEnv = csInterface.getHostEnvironment();
+						if (updatedHostEnv && updatedHostEnv.appSkinInfo) {
+							updateThemeWithAppSkinInfo(updatedHostEnv.appSkinInfo);
+						}
+					},
+				);
+				document
+					.getElementById("btn_PPRO_Sel")
+					.addEventListener("click", () => {
+						const cycleLength =
+							document.getElementById("cycleLengthSelect").value;
+						const targetIndex =
+							document.getElementById("targetIndexSelect").value;
+
+						// 2. 校验用户是否已经做出了选择
+						if (!cycleLength || !targetIndex) {
+							alert("请先选择循环次数和目标索引！");
+							return;
+						}
+
+						// 3. 将变量拼接到字符串中，传给你的 ExtendScript (JSX)
+						// 为了防止字符类型导致 JSX 报错，这里用 Number() 明确转成数字
+						const jsxCommand = `$._PPP_.selectCustomCycle(${Number(cycleLength)}, ${Number(targetIndex)})`;
+
+						// 4. 调用 CEP 原生的 evalScript 发送给 Premiere
+						if (window.__adobe_cep__) {
+							// 处于 Premiere CEP 环境中
+							csInterface.evalScript(jsxCommand, function (result) {
+								// 这里可以接收 JSX 传回来的返回值（如果需要的话）
+								console.log("ExtendScript 执行完毕，返回值: ", result);
+							});
+						} else {
+							// 处于普通浏览器环境（本地双击网页测试时）
+							console.log("即将发送给宿主的脚本: ", jsxCommand);
+							alert(
+								"当前不在 Premiere 环境中，脚本命令已打印到控制台: \n" +
+									jsxCommand,
+							);
+						}
+					});
+			});
+			const cp =
+				typeof require !== "undefined" ? require("child_process") : null;
+			const path = typeof require !== "undefined" ? require("path") : null;
+
+			// 在你的 startPlayback() 中调用这个函数即可
+			function playMCI(midiFilePath, startTimeSeconds) {
+				if (!cp) {
+					alert("Node.js 未开启，请检查 manifest.xml");
+					return;
+				}
+
+				const startMs = Math.floor(startTimeSeconds * 1000);
+				// 纯血原生调用，直接击穿浏览器沙盒
+				const psScript = `
+        $code = '[DllImport("winmm.dll")] public static extern int mciSendString(string command, string buffer, int bufferSize, IntPtr hwndCallback);'
+        $mci = Add-Type -MemberDefinition $code -Name "Mci" -Namespace "Win32" -PassThru
+        $mci::mciSendString('close my_midi', $null, 0, [IntPtr]::Zero)
+        $mci::mciSendString('open "${midiFilePath}" type sequencer alias my_midi', $null, 0, [IntPtr]::Zero)
+        $mci::mciSendString('play my_midi from ${startMs}', $null, 0, [IntPtr]::Zero)
+    `;
+
+				cp.exec(`powershell -Command "${psScript}"`);
+			}
+
+			function stopMCI() {
+				if (cp)
+					cp.exec(
+						"powershell -Command \"$mci=[Type]::GetTypeFromProgID('WMPlayer.OCX'); mciSendString('stop my_midi', $null, 0, 0)\"",
+					);
+			}
+		</script>
+	</head>
+	<body>
+		<input
+			type="file"
+			id="midiFileInput"
+			accept=".mid,.midi"
+			style="display: none" />
+
+		<div class="controls">
+			<fluent-button
+				class="full-width"
+				appearance="accent"
+				onclick="document.getElementById('midiFileInput').click()">
+				📂 加载 MIDI 文件
+			</fluent-button>
+
+			<div class="full-width row">
+				<fluent-select id="trackSelect" disabled onchange="onTrackChanged()">
+					<fluent-option value="">等待加载...</fluent-option>
+				</fluent-select>
+				<fluent-switch id="chkFullSong" onchange="drawPianoRoll()"
+					>整曲预览</fluent-switch
+				>
+			</div>
+		</div>
+
+		<div class="mode-panel">
+			<div class="row">
+				<label style="color: #4daafc; font-weight: bold">▶ 播放引擎:</label>
+				<fluent-radio-group
+					id="playModeGroup"
+					orientation="horizontal"
+					value="webmidi">
+					<fluent-radio value="webmidi">Windows原生(WebMIDI)</fluent-radio>
+					<fluent-radio value="webaudio" disabled>基础合成器</fluent-radio>
+				</fluent-radio-group>
+			</div>
+		</div>
+
+		<div class="controls">
+			<fluent-button id="btnPlay" disabled onclick="togglePlay()">
+				▶ 播放 / 暂停
+			</fluent-button>
+			<fluent-button id="btnStop" disabled onclick="stopPlayback()">
+				⏹ 停止 / 复位
+			</fluent-button>
+		</div>
+
+		<div class="canvas-container" id="canvasContainer">
+			<canvas id="pianoRoll"></canvas>
+		</div>
+
+		<fluent-button
+			id="btnExport"
+			class="full-width"
+			appearance="stealth"
+			style="color: #ff9f43; font-weight: bold; border: 1px solid #ff9f43"
+			disabled
+			onclick="sendToPremiere()">
+			⚡ 将选中轨道导入 Premiere
+		</fluent-button>
+
+		<div class="status-bar">
+			<span id="statusBar">初始化 WebMIDI...</span>
+			<span id="timeBar" style="font-family: Consolas">00:00.0 / 00:00.0</span>
+		</div>
+
+		<script>
+			let parsedMidi = null;
+			let allTracksData = [];
+			let currentTrackData = [];
+			let trackMetadata = [];
+			let maxTime = 0;
+
+			let isPlaying = false;
+			let playbackTime = 0;
+			let audioStartTime = 0;
+			let schedulerTimerId = null;
+			let visualFrameId = null;
+
+			let pendingNotes = [];
+			let activeNotes = [];
+
+			let scaleX = 1.0;
+			let offsetX = 0;
+			let isDragging = false;
+			let dragStartX = 0;
+
+			let midiOutput = null;
+
+			// 1. 初始化 WebMIDI
+			if (navigator.requestMIDIAccess) {
+				navigator
+					.requestMIDIAccess()
+					.then((access) => {
+						for (let output of access.outputs.values()) {
+							midiOutput = output;
+							break;
+						}
+						document.getElementById("statusBar").innerText = midiOutput
+							? `WebMIDI 已就绪: ${midiOutput.name}`
+							: "未找到 MIDI 硬件/虚拟输出";
+					})
+					.catch(() => {
+						document.getElementById("statusBar").innerText =
+							"WebMIDI 权限被拒绝";
+					});
+			}
+
+			// 2. 加载与解析
+			document
+				.getElementById("midiFileInput")
+				.addEventListener("change", function (e) {
+					const file = e.target.files[0];
+					if (!file) return;
+					const reader = new FileReader();
+					reader.onload = function (ev) {
+						try {
+							parsedMidi = new Midi(ev.target.result);
+							processMidiData();
+
+							document.getElementById("trackSelect").disabled = false;
+							document.getElementById("btnPlay").disabled = false;
+							document.getElementById("btnStop").disabled = false;
+							document.getElementById("btnExport").disabled = false;
+						} catch (err) {
+							alert("MIDI 解析失败: " + err);
+						}
+					};
+					reader.readAsArrayBuffer(file);
+					this.value = "";
+				});
+
+			function processMidiData() {
+				allTracksData = [];
+				trackMetadata = [];
+				maxTime = 0;
+				const select = document.getElementById("trackSelect");
+				select.innerHTML = "";
+
+				let availableChannels = [
+					0, 1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12, 13, 14, 15,
+				];
+
+				parsedMidi.tracks.forEach((track, index) => {
+					if (track.notes.length > 0) {
+						let isDrum = track.instrument ? track.instrument.percussion : false;
+						let channel = isDrum
+							? 9
+							: availableChannels.length > 0
+								? availableChannels.shift()
+								: 0;
+						let programNumber = track.instrument ? track.instrument.number : 0;
+
+						trackMetadata.push({
+							trackIdx: index,
+							channel: channel,
+							program: programNumber,
+							isDrum: isDrum,
+						});
+
+						track.notes.forEach((n) => {
+							const end = n.time + n.duration;
+							if (end > maxTime) maxTime = end;
+							allTracksData.push({
+								pitch: n.midi,
+								start: n.time,
+								duration: n.duration,
+								end: end,
+								trackIdx: index,
+								velocity: Math.floor(n.velocity * 127),
+								channel: channel,
+							});
+						});
+
+						const name =
+							track.name ||
+							(track.instrument ? track.instrument.name : "Untitled");
+						const option = document.createElement("fluent-option");
+						option.value = index;
+						option.innerText = `Trk ${index}: ${name} [${isDrum ? "Drum" : "CH" + channel}] (${track.notes.length})`;
+						select.appendChild(option);
+					}
+				});
+
+				scaleX = 1.0;
+				offsetX = 0;
+				setTimeout(() => {
+					if (select.querySelector("fluent-option")) {
+						select.value = select.querySelector("fluent-option").value;
+						onTrackChanged();
+					}
+				}, 50);
+			}
+
+			function onTrackChanged() {
+				stopPlayback();
+				const trackIndex = parseInt(
+					document.getElementById("trackSelect").value,
+				);
+				if (isNaN(trackIndex)) return;
+				currentTrackData = allTracksData.filter(
+					(n) => n.trackIdx === trackIndex,
+				);
+				drawPianoRoll();
+			}
+
+			// 3. 纯平涂渲染与剔除算法
+			const canvas = document.getElementById("pianoRoll");
+			const ctx = canvas.getContext("2d", { alpha: false });
+
+			function drawPianoRoll() {
+				const container = document.getElementById("canvasContainer");
+				canvas.width = container.clientWidth;
+				canvas.height = container.clientHeight;
+				const width = canvas.width;
+				const height = canvas.height;
+
+				ctx.fillStyle = "#222";
+				ctx.fillRect(0, 0, width, height);
+
+				const isFullSong = document.getElementById("chkFullSong").checked;
+				const dataToDraw = isFullSong ? allTracksData : currentTrackData;
+				if (dataToDraw.length === 0) return;
+
+				let minP = 127,
+					maxP = 0;
+				dataToDraw.forEach((n) => {
+					if (n.pitch < minP) minP = n.pitch;
+					if (n.pitch > maxP) maxP = n.pitch;
+				});
+				minP = Math.max(0, minP - 2);
+				maxP = Math.min(127, maxP + 2);
+				const pitchRange = maxP - minP || 10;
+				const noteHeight = Math.max(2, (height / pitchRange) * 0.8);
+
+				dataToDraw.forEach((n) => {
+					const rawX = (n.start / maxTime) * width;
+					const rawW = (n.duration / maxTime) * width;
+
+					const x = rawX * scaleX + offsetX;
+					const w = Math.max(2, rawW * scaleX);
+
+					if (x + w < 0 || x > width) return;
+
+					const normalizedPitch = (n.pitch - minP) / pitchRange;
+					const y = height - normalizedPitch * height - noteHeight;
+
+					ctx.fillStyle =
+						n.channel === 9
+							? "#6e6e6e"
+							: isFullSong
+								? `hsl(${(n.trackIdx * 50) % 360}, 65%, 60%)`
+								: "#4daafc";
+					ctx.fillRect(x | 0, y | 0, w | 0, noteHeight | 0);
+				});
+
+				const playheadX = (playbackTime / maxTime) * width * scaleX + offsetX;
+				if (playheadX >= 0 && playheadX <= width) {
+					ctx.fillStyle = "#ff5e57";
+					ctx.fillRect((playheadX | 0) - 1, 0, 2, height);
+				}
+
+				const fmt = (t) =>
+					`${Math.floor(t / 60)
+						.toString()
+						.padStart(2, "0")}:${(t % 60).toFixed(1).padStart(4, "0")}`;
+				document.getElementById("timeBar").innerText =
+					`${fmt(playbackTime)} / ${fmt(maxTime)}`;
+			}
+
+			// 4. 画布交互
+			canvas.addEventListener("mousedown", (e) => {
+				if (e.button === 1 || e.shiftKey || e.button === 2) {
+					isDragging = true;
+					dragStartX = e.clientX - offsetX;
+				} else {
+					const rect = canvas.getBoundingClientRect();
+					const clickTime =
+						((e.clientX - rect.left - offsetX) / scaleX / canvas.width) *
+						maxTime;
+					seekPlayback(Math.max(0, Math.min(clickTime, maxTime)));
+				}
+			});
+			canvas.addEventListener("mousemove", (e) => {
+				if (isDragging) {
+					offsetX = e.clientX - dragStartX;
+					requestAnimationFrame(drawPianoRoll);
+				}
+			});
+			window.addEventListener("mouseup", () => (isDragging = false));
+			canvas.addEventListener("contextmenu", (e) => e.preventDefault());
+
+			canvas.addEventListener("wheel", (e) => {
+				e.preventDefault();
+				const rect = canvas.getBoundingClientRect();
+				const mouseX = e.clientX - rect.left;
+
+				const zoomFactor = e.deltaY > 0 ? 0.85 : 1.15;
+				offsetX = mouseX - (mouseX - offsetX) * zoomFactor;
+				scaleX *= zoomFactor;
+				requestAnimationFrame(drawPianoRoll);
+			});
+
+			// 5. 预读调度器 (Lookahead Scheduler) 解决卡顿
+			function togglePlay() {
+				isPlaying ? stopPlayback() : startPlayback();
+			}
+
+			function seekPlayback(time) {
+				playbackTime = time;
+				if (isPlaying) {
+					stopPlayback();
+					startPlayback();
+				} else {
+					drawPianoRoll();
+				}
+			}
+
+			function startPlayback() {
+				if (maxTime === 0 || !midiOutput) return;
+				isPlaying = true;
+				document.getElementById("btnPlay").innerText = "⏸ 暂停";
+
+				audioStartTime = performance.now() - playbackTime * 1000;
+
+				const isFullSong = document.getElementById("chkFullSong").checked;
+				const currentTrackIdx = parseInt(
+					document.getElementById("trackSelect").value,
+				);
+
+				(isFullSong
+					? trackMetadata
+					: trackMetadata.filter((m) => m.trackIdx === currentTrackIdx)
+				).forEach((meta) => {
+					if (meta.channel !== 9)
+						midiOutput.send([0xc0 | meta.channel, meta.program]);
+				});
+
+				const sourceData = isFullSong ? allTracksData : currentTrackData;
+				pendingNotes = sourceData
+					.filter((n) => n.start >= playbackTime)
+					.sort((a, b) => a.start - b.start);
+
+				schedulerTimerId = setInterval(scheduleAudio, 25);
+				visualFrameId = requestAnimationFrame(updateVisuals);
+			}
+
+			function stopPlayback() {
+				isPlaying = false;
+				document.getElementById("btnPlay").innerText = "▶ 播放 / 暂停";
+				clearInterval(schedulerTimerId);
+				cancelAnimationFrame(visualFrameId);
+
+				if (midiOutput) {
+					for (let i = 0; i < 16; i++) {
+						midiOutput.send([0xb0 | i, 123, 0]);
+					}
+				}
+			}
+
+			function scheduleAudio() {
+				if (!isPlaying || !midiOutput) return;
+
+				let currentTime = (performance.now() - audioStartTime) / 1000;
+				let lookaheadTime = currentTime + 0.1;
+
+				while (
+					pendingNotes.length > 0 &&
+					pendingNotes[0].start <= lookaheadTime
+				) {
+					let note = pendingNotes.shift();
+					let absolutePlayTime = audioStartTime + note.start * 1000;
+					let absoluteStopTime = audioStartTime + note.end * 1000;
+
+					midiOutput.send(
+						[0x90 | note.channel, note.pitch, note.velocity || 100],
+						absolutePlayTime,
+					);
+					midiOutput.send(
+						[0x80 | note.channel, note.pitch, 0],
+						absoluteStopTime,
+					);
+				}
+
+				if (currentTime >= maxTime) {
+					stopPlayback();
+					playbackTime = 0;
+					drawPianoRoll();
+				}
+			}
+
+			function updateVisuals() {
+				if (!isPlaying) return;
+				playbackTime = (performance.now() - audioStartTime) / 1000;
+				drawPianoRoll();
+				visualFrameId = requestAnimationFrame(updateVisuals);
+			}
+
+			// 6. 导入 Premiere
+			function sendToPremiere() {
+				if (!currentTrackData.length) return;
+				const exportData = currentTrackData.map((n) => ({
+					pitch: n.pitch,
+					start_time: n.start,
+				}));
+				const encodedData = encodeURIComponent(JSON.stringify(exportData));
+				const csInterface = new CSInterface();
+				csInterface.evalScript(
+					'$._PPP_.importDataDirectly("' + encodedData + '")',
+				);
+			}
+		</script>
+	</body>
+</html>

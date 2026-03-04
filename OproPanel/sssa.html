@@ -1,0 +1,1183 @@
+<!doctype html>
+<html lang="zh-CN">
+   <title>干飞马</title>
+	<head>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<meta charset="utf-8" />
+		<script src="./lib/CSInterface.js"></script>
+		<script src="./lib/jquery-1.9.1.js"></script>
+		<script src="./lib/Vulcan.js"></script>
+		<script type="module" src="web-components.js"></script>
+		<script type="module" src="fluentplus.js"></script>
+		<link href="./css/style.css" rel="stylesheet" type="text/css" />
+		<link rel="stylesheet" href="./css/treefl.css" />
+
+		<script src="midi.js"></script>
+		<script type="module">
+			import {
+				baseLayerLuminance,
+				StandardLuminance,
+			} from "./web-components.js";
+
+			document.addEventListener("DOMContentLoaded", function () {
+				var csInterface = new CSInterface();
+				const provider = document.querySelector("fluent-provider");
+
+				// 1. 定义更新主题的函数
+				function updateThemeWithAppSkinInfo(appSkinInfo) {
+					if (!appSkinInfo || !provider) return;
+
+					// 获取 Premiere 面板的背景 RGB 颜色
+					const panelBgColor = appSkinInfo.panelBackgroundColor.color;
+
+					// 将 Adobe 的 RGB 对象转换为 CSS 颜色字符串
+					const bgRgb = `rgb(${Math.round(panelBgColor.red)}, ${Math.round(panelBgColor.green)}, ${Math.round(panelBgColor.blue)})`;
+
+					// 计算粗略的亮度值 (0-255) 以判断是深色还是浅色模式
+					// Premiere 默认通常是深色，但用户可以调得很亮
+					const luminance =
+						0.299 * panelBgColor.red +
+						0.587 * panelBgColor.green +
+						0.114 * panelBgColor.blue;
+
+					// 根据亮度决定 Fluent UI 的模式
+					// 128 是中点，小于 128 为暗色，大于为亮色
+					if (luminance < 128) {
+						baseLayerLuminance.setValueFor(
+							provider,
+							StandardLuminance.DarkMode,
+						);
+					} else {
+						baseLayerLuminance.setValueFor(
+							provider,
+							StandardLuminance.LightMode,
+						);
+					}
+
+					// 核心：强制 body 的背景色与 Premiere 面板背景色完全一致
+					// 这样可以消除 Fluent UI 默认暗色与 Premiere 默认暗色之间的微小色差
+					document.body.style.backgroundColor = bgRgb;
+
+					// 如果你的卡片有背景色，也可以在这里动态覆盖，保持无缝融合
+					// document.body.style.setProperty('--fill-color', bgRgb);
+				}
+
+				// 2. 页面加载时，获取当前的宿主环境颜色并初始化
+				const hostEnv = csInterface.getHostEnvironment();
+				if (hostEnv && hostEnv.appSkinInfo) {
+					updateThemeWithAppSkinInfo(hostEnv.appSkinInfo);
+				} else {
+					// 如果在浏览器里调试(没有CEP环境)，默认给暗色
+					baseLayerLuminance.setValueFor(provider, StandardLuminance.DarkMode);
+				}
+
+				// 3. 监听 Premiere Pro 的主题变化事件 (当用户在首选项里拖动滑块时触发)
+				csInterface.addEventListener(
+					CSInterface.THEME_COLOR_CHANGED_EVENT,
+					function () {
+						// 重新获取环境信息并更新
+						const updatedHostEnv = csInterface.getHostEnvironment();
+						if (updatedHostEnv && updatedHostEnv.appSkinInfo) {
+							updateThemeWithAppSkinInfo(updatedHostEnv.appSkinInfo);
+						}
+					},
+				);
+				document
+					.getElementById("btn_PPRO_Sel")
+					.addEventListener("click", () => {
+						const cycleLength =
+							document.getElementById("cycleLengthSelect").value;
+						const targetIndex =
+							document.getElementById("targetIndexSelect").value;
+
+						// 2. 校验用户是否已经做出了选择
+						if (!cycleLength || !targetIndex) {
+							alert("请先选择循环次数和目标索引！");
+							return;
+						}
+
+						// 3. 将变量拼接到字符串中，传给你的 ExtendScript (JSX)
+						// 为了防止字符类型导致 JSX 报错，这里用 Number() 明确转成数字
+						const jsxCommand = `$._PPP_.selectCustomCycle(${Number(cycleLength)}, ${Number(targetIndex)})`;
+
+						// 4. 调用 CEP 原生的 evalScript 发送给 Premiere
+						if (window.__adobe_cep__) {
+							// 处于 Premiere CEP 环境中
+							csInterface.evalScript(jsxCommand, function (result) {
+								// 这里可以接收 JSX 传回来的返回值（如果需要的话）
+								console.log("ExtendScript 执行完毕，返回值: ", result);
+							});
+						} else {
+							// 处于普通浏览器环境（本地双击网页测试时）
+							console.log("即将发送给宿主的脚本: ", jsxCommand);
+							alert(
+								"当前不在 Premiere 环境中，脚本命令已打印到控制台: \n" +
+									jsxCommand,
+							);
+						}
+					});
+			});
+		</script>
+		<style>
+			/* 极致平涂风格，高度空间利用率 */
+			* {
+				color: var(--neutral-foreground-rest);
+			}
+			body {
+				background-color: var(--fill-color); /* from inline */
+				color: var(--neutral-foreground-rest);
+				font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+				margin: 0;
+				padding: 10px;
+				display: flex;
+				flex-direction: column;
+				height: 100vh;
+				box-sizing: border-box;
+				overflow: hidden;
+			}
+
+			/* 修复 Fluent UI 下拉菜单被 Flex 容器截断的核心 CSS */
+			fluent-select,
+			fluent-select::part(listbox),
+			.track-row,
+			.editor-grid {
+				contain: none !important;
+				content-visibility: visible !important;
+				overflow: visible !important;
+			}
+
+			.flat-panel {
+				background-color: #2b2b2b;
+				padding: 10px;
+				border-radius: 4px;
+				margin-bottom: 8px;
+				border: 1px solid #3d3d3d;
+				flex-shrink: 0;
+			}
+			fluent-slider {
+				width: 100%;
+				min-height: 32px; /* 核心：给它垂直空间，让内部的轨道得以居中对齐 */
+				margin-top: 4px; /* 稍微往下挪一点，防止和上方的 Label 挤在一起 */
+			}
+
+			/* 针对轨道混音器里的滑块，稍微紧凑一点 */
+			.track-row fluent-slider {
+				margin-top: 0;
+			}
+			.toolbar {
+				display: flex;
+				gap: 10px;
+				align-items: center;
+				flex-wrap: wrap;
+			}
+
+			/* 画布区 */
+			.canvas-container {
+				flex: 1 1 30%;
+				min-height: 150px;
+				background-color: #1a1a1a;
+				border-radius: 4px;
+				overflow: hidden;
+				position: relative;
+				cursor: ew-resize;
+				border: 1px solid #333333;
+				margin-bottom: 8px;
+			}
+			canvas {
+				display: block;
+				width: 100%;
+				height: 100%;
+			}
+
+			/* 底部控制台：内部滚动，保护画布不被挤压 */
+			.bottom-console {
+				contain: none !important;
+				content-visibility: visible !important;
+				overflow: visible !important;
+				flex: 1 1 45%;
+				display: flex;
+				gap: 10px;
+				overflow-y: auto;
+				padding-right: 5px;
+			}
+
+			.console-section {
+				flex: 1;
+				background-color: #2b2b2b;
+				padding: 10px;
+				border-radius: 4px;
+				border: 1px solid #3d3d3d;
+				display: flex;
+				flex-direction: column;
+				gap: 8px;
+			}
+
+			.section-title {
+				font-size: 13px;
+				font-weight: bold;
+				color: #4daafc;
+				margin-bottom: 4px;
+				border-bottom: 1px solid #444;
+				padding-bottom: 4px;
+				display: flex;
+				justify-content: space-between;
+				align-items: center;
+			}
+
+			/* 轨道混音器条目 */
+			.track-row {
+				display: grid;
+				grid-template-columns: 4fr 3fr 3fr;
+				gap: 8px;
+				align-items: center;
+				background-color: #222;
+				padding: 6px;
+				border-radius: 4px;
+				font-size: 12px;
+				/* 保证悬浮窗超出边界显示 */
+				contain: none !important;
+				content-visibility: visible !important;
+				overflow: visible !important;
+				position: relative;
+			}
+
+			.btn-solo {
+				background-color: #333;
+				color: #aaa;
+				border: 1px solid #555;
+				border-radius: 3px;
+				cursor: pointer;
+				padding: 2px 6px;
+				font-size: 11px;
+				transition: 0.2s;
+			}
+			.btn-solo.active {
+				background-color: #f1c40f;
+				color: #000;
+				border-color: #f39c12;
+				font-weight: bold;
+			}
+
+			.editor-grid {
+				display: grid;
+				grid-template-columns: 1fr 1fr;
+				gap: 10px;
+				font-size: 12px;
+			}
+			.control-group {
+				display: flex;
+				flex-direction: column;
+				gap: 5px;
+			}
+
+			.status-bar {
+				font-size: 12px;
+				color: #888888;
+				display: flex;
+				justify-content: space-between;
+				align-items: center;
+				flex-shrink: 0;
+				margin-top: 8px;
+			}
+
+			fluent-button {
+				min-width: 80px;
+			}
+			fluent-select {
+				width: 100%;
+				min-width: unset;
+			}
+			fluent-slider {
+				width: 100%;
+			}
+
+		</style>
+	</head>
+	<body>
+		<fluent-provider>
+			<input
+				type="file"
+				id="midiFileInput"
+				accept=".mid,.midi"
+				style="display: none" />
+
+			<div class="flat-panel">
+				<div class="toolbar" style="margin-bottom: 8px">
+					<fluent-button
+						appearance="accent"
+						onclick="document.getElementById('midiFileInput').click()"
+						>📂 载入 MIDI</fluent-button
+					>
+					<fluent-switch id="chkFullSong" checked onchange="drawPianoRoll()"
+						>整曲预览</fluent-switch
+					>
+					<div style="flex-grow: 1;"></div>
+					<label style="font-size: 12px; color: #ccc">主音量:</label>
+					<fluent-slider
+						id="masterVolume"
+						min="0"
+						max="2"
+						step="0.05"
+						value="1.0"
+						style="width: 140px; margin-top: 15px;margin-bottom: autp;"
+						onchange="updateMasterVolume()"></fluent-slider>
+				</div>
+
+				<div class="toolbar">
+					<fluent-button
+						id="btnPlay"
+						disabled
+						onclick="togglePlay()"
+						style="background-color: #44b676"
+						>▶ 播放</fluent-button
+					>
+					<fluent-button
+						id="btnStop"
+						disabled
+						onclick="stopPlayback()"
+						style="background-color: #cd5c5c"
+						>⏹ 停止</fluent-button
+					>
+					<div style="flex-grow: 1"></div>
+					<fluent-button
+						id="btnExport"
+						style="border: 1px solid #ff9f43"
+						disabled
+						onclick="sendToPremiere()"
+						>⚡ 导入 Premiere</fluent-button
+					>
+				</div>
+			</div>
+
+			<div class="canvas-container" id="canvasContainer">
+				<canvas id="pianoRoll"></canvas>
+			</div>
+
+			<div class="bottom-console">
+				<div class="console-section" style="flex: 3">
+					<div class="section-title">🎚️ 轨道混音器</div>
+					<div
+						id="trackMixerContainer"
+						style="
+							display: flex;
+							flex-direction: column;
+							gap: 4px;
+							overflow-y: visible;
+						">
+						<div style="color: #666; font-size: 12px; padding: 10px">
+							请先载入 MIDI 文件以配置轨道。
+						</div>
+					</div>
+				</div>
+
+				<div class="console-section" style="flex: 2">
+					<div class="section-title">
+						🎛️ 乐器编辑器
+						<div>
+							<button class="btn-solo" onclick="addNewPreset()">➕ 新建</button>
+							<button class="btn-solo" onclick="deletePreset()">🗑️ 删除</button>
+						</div>
+					</div>
+					<div class="editor-grid">
+						<div class="control-group" style="grid-column: span 2">
+							<label>编辑目标 (自定义预设):</label>
+							<fluent-select
+								id="editTarget"
+								onchange="loadPresetToUI()"></fluent-select>
+						</div>
+						<div class="control-group">
+							<label>波形 (Wave):</label>
+							<fluent-select id="editWave" onchange="savePresetFromUI()">
+								<fluent-option value="pulse">Pulse</fluent-option>
+								<fluent-option value="triangle"
+									>Triangle</fluent-option
+								>
+								<fluent-option value="sine">Sine</fluent-option>
+								<fluent-option value="sawtooth"
+									>Sawtooth</fluent-option
+								>
+								<fluent-option value="noise">Noise</fluent-option>
+							</fluent-select>
+						</div>
+						<div class="control-group">
+							<label>占空比: <span id="vDuty">0.50</span></label>
+							<fluent-slider
+								id="editDuty"
+								min="0.01"
+								max="0.99"
+								step="0.01"
+								value="0.5"
+								onchange="savePresetFromUI()"></fluent-slider>
+						</div>
+						<div class="control-group">
+							<label>起音 (A): <span id="vA">0.01</span></label>
+							<fluent-slider
+								id="editA"
+								min="0"
+								max="1"
+								step="0.01"
+								value="0.01"
+								onchange="savePresetFromUI()"></fluent-slider>
+						</div>
+						<div class="control-group">
+							<label>衰减 (D): <span id="vD">0.10</span></label>
+							<fluent-slider
+								id="editD"
+								min="0"
+								max="1"
+								step="0.01"
+								value="0.1"
+								onchange="savePresetFromUI()"></fluent-slider>
+						</div>
+						<div class="control-group">
+							<label>延音 (S): <span id="vS">0.50</span></label>
+							<fluent-slider
+								id="editS"
+								min="0"
+								max="1"
+								step="0.01"
+								value="0.5"
+								onchange="savePresetFromUI()"></fluent-slider>
+						</div>
+						<div class="control-group">
+							<label>释放 (R): <span id="vR">0.10</span></label>
+							<fluent-slider
+								id="editR"
+								min="0"
+								max="2"
+								step="0.01"
+								value="0.1"
+								onchange="savePresetFromUI()"></fluent-slider>
+						</div>
+					</div>
+					<div
+						style="
+							display: flex;
+							gap: 10px;
+							margin-top: auto;
+							padding-top: 10px;
+						">
+						<fluent-button
+							onclick="testPreset()"
+							style="flex: 1; background-color: #1f538d; color: white"
+							>🎹 试听</fluent-button
+						>
+						<fluent-button onclick="resetPresets()" style="flex: 1"
+							>🔄 恢复默认</fluent-button
+						>
+					</div>
+				</div>
+			</div>
+
+			<div class="status-bar">
+				<span id="statusBar">等待操作...</span>
+				<span id="timeBar" style="font-family: Consolas, monospace"
+					>00:00.0 / 00:00.0</span
+				>
+			</div>
+
+			<script>
+				// ----------------------------------------------------
+				// 1. 数据存储与自定义预设管理
+				// ----------------------------------------------------
+				const DEFAULT_PRESETS = {
+					lead: {
+						wave: "pulse",
+						duty: 0.125,
+						attack: 0.01,
+						decay: 0.1,
+						sustain: 0.3,
+						release: 0.1,
+					},
+					bass: {
+						wave: "triangle",
+						duty: 0.5,
+						attack: 0.05,
+						decay: 0.2,
+						sustain: 0.8,
+						release: 0.15,
+					},
+					pad: {
+						wave: "sine",
+						duty: 0.5,
+						attack: 0.4,
+						decay: 0.3,
+						sustain: 0.6,
+						release: 0.6,
+					},
+					drum: {
+						wave: "noise",
+						duty: 0.5,
+						attack: 0.001,
+						decay: 0.1,
+						sustain: 0.0,
+						release: 0.05,
+					},
+				};
+
+				let SynthPresets =
+					JSON.parse(localStorage.getItem("midi_synth_presets")) ||
+					JSON.parse(JSON.stringify(DEFAULT_PRESETS));
+				let TrackSettings =
+					JSON.parse(localStorage.getItem("midi_track_settings")) || {};
+
+				let parsedMidi = null,
+					allTracksData = [],
+					maxTime = 0;
+				let scaleX = 1.0,
+					offsetX = 0,
+					isDragging = false,
+					dragStartX = 0;
+				let audioCtx = null,
+					masterGainNode = null,
+					isPlaying = false;
+				let playbackTime = 0,
+					startTimeBase = 0,
+					scheduleTimer = null,
+					visualTimer = null,
+					pendingNotes = [];
+
+				// Solo 状态记忆
+				let soloTrackIndex = -1;
+				let preSoloStates = {};
+
+				// ----------------------------------------------------
+				// 2. 乐器编辑器 (支持无限自定义)
+				// ----------------------------------------------------
+				function renderPresetDropdowns() {
+					const editTarget = document.getElementById("editTarget");
+					const currentEditVal = editTarget.value || "lead";
+					editTarget.innerHTML = "";
+
+					Object.keys(SynthPresets).forEach((key) => {
+						const opt = document.createElement("fluent-option");
+						opt.value = key;
+						opt.innerText = key;
+						if (key === currentEditVal) opt.setAttribute("selected", "true");
+						editTarget.appendChild(opt);
+					});
+					setTimeout(() => {
+						editTarget.value = currentEditVal;
+					}, 50);
+
+					// 同时刷新混音器中所有轨道的乐器列表
+					renderMixerUI();
+				}
+
+				function loadPresetToUI() {
+					const target = document.getElementById("editTarget").value;
+					const p = SynthPresets[target];
+					if (!p) return;
+
+					document.getElementById("editWave").value = p.wave;
+					document.getElementById("editDuty").value = p.duty;
+					document.getElementById("editA").value = p.attack;
+					document.getElementById("editD").value = p.decay;
+					document.getElementById("editS").value = p.sustain;
+					document.getElementById("editR").value = p.release;
+
+					updatePresetLabels(p);
+				}
+
+				function updatePresetLabels(p) {
+					document.getElementById("vDuty").innerText = parseFloat(
+						p.duty,
+					).toFixed(2);
+					document.getElementById("vA").innerText = parseFloat(
+						p.attack,
+					).toFixed(2);
+					document.getElementById("vD").innerText = parseFloat(p.decay).toFixed(
+						2,
+					);
+					document.getElementById("vS").innerText = parseFloat(
+						p.sustain,
+					).toFixed(2);
+					document.getElementById("vR").innerText = parseFloat(
+						p.release,
+					).toFixed(2);
+				}
+
+				function savePresetFromUI() {
+					const target = document.getElementById("editTarget").value;
+					const p = {
+						wave: document.getElementById("editWave").value,
+						duty: parseFloat(document.getElementById("editDuty").value),
+						attack: parseFloat(document.getElementById("editA").value),
+						decay: parseFloat(document.getElementById("editD").value),
+						sustain: parseFloat(document.getElementById("editS").value),
+						release: parseFloat(document.getElementById("editR").value),
+					};
+					SynthPresets[target] = p;
+					localStorage.setItem(
+						"midi_synth_presets",
+						JSON.stringify(SynthPresets),
+					);
+					updatePresetLabels(p);
+				}
+
+				function addNewPreset() {
+					const name = prompt("请输入自定义乐器名称 (如 Synth_80s):");
+					if (!name || name.trim() === "") return;
+					if (SynthPresets[name]) return alert("乐器名称已存在！");
+
+					// 继承当前编辑器的参数
+					SynthPresets[name] = JSON.parse(
+						JSON.stringify(
+							SynthPresets[document.getElementById("editTarget").value],
+						),
+					);
+					localStorage.setItem(
+						"midi_synth_presets",
+						JSON.stringify(SynthPresets),
+					);
+
+					renderPresetDropdowns();
+					setTimeout(() => {
+						document.getElementById("editTarget").value = name;
+						loadPresetToUI();
+					}, 100);
+				}
+
+				function deletePreset() {
+					const target = document.getElementById("editTarget").value;
+					if (["lead", "bass", "pad", "drum"].includes(target))
+						return alert("基础默认乐器无法删除，但你可以修改它们的参数！");
+					if (!confirm(`确定要删除乐器 [${target}] 吗？`)) return;
+
+					delete SynthPresets[target];
+
+					// 将使用了被删乐器的轨道回退到 lead
+					Object.values(TrackSettings).forEach((t) => {
+						if (t.preset === target) t.preset = "lead";
+					});
+					localStorage.setItem(
+						"midi_synth_presets",
+						JSON.stringify(SynthPresets),
+					);
+					localStorage.setItem(
+						"midi_track_settings",
+						JSON.stringify(TrackSettings),
+					);
+
+					renderPresetDropdowns();
+					setTimeout(() => {
+						document.getElementById("editTarget").value = "lead";
+						loadPresetToUI();
+					}, 100);
+				}
+
+				function resetPresets() {
+					if (
+						!confirm("确定要恢复所有预设到初始状态吗？这将清空你的自定义参数。")
+					)
+						return;
+					SynthPresets = JSON.parse(JSON.stringify(DEFAULT_PRESETS));
+					localStorage.setItem(
+						"midi_synth_presets",
+						JSON.stringify(SynthPresets),
+					);
+					renderPresetDropdowns();
+					loadPresetToUI();
+				}
+
+				// 初始化编辑器下拉菜单
+				renderPresetDropdowns();
+				setTimeout(loadPresetToUI, 100);
+
+				// ----------------------------------------------------
+				// 3. 文件解析、Solo 逻辑与混音器
+				// ----------------------------------------------------
+				document
+					.getElementById("midiFileInput")
+					.addEventListener("change", function (e) {
+						const file = e.target.files[0];
+						if (!file) return;
+						const reader = new FileReader();
+						reader.onload = function (ev) {
+							try {
+								parsedMidi = new Midi(ev.target.result);
+								processMidiData();
+								document.getElementById("btnPlay").disabled = false;
+								document.getElementById("btnStop").disabled = false;
+								document.getElementById("btnExport").disabled = false;
+								document.getElementById("statusBar").innerText =
+									`解析完毕: ${file.name}`;
+							} catch (err) {
+								alert("MIDI 解析失败: " + err);
+							}
+						};
+						reader.readAsArrayBuffer(file);
+						this.value = "";
+					});
+
+				function processMidiData() {
+					allTracksData = [];
+					maxTime = 0;
+					soloTrackIndex = -1;
+					preSoloStates = {};
+
+					parsedMidi.tracks.forEach((track, index) => {
+						if (track.notes.length > 0) {
+							let isDrum = track.instrument
+								? track.instrument.percussion
+								: false;
+							let defaultPreset = isDrum
+								? "drum"
+								: track.notes.some((n) => n.midi < 45)
+									? "bass"
+									: "lead";
+
+							if (!TrackSettings[index])
+								TrackSettings[index] = {
+									preset: defaultPreset,
+									volume: 1.0,
+									active: true,
+								};
+
+							track.notes.forEach((n) => {
+								const end = n.time + n.duration;
+								if (end > maxTime) maxTime = end;
+								allTracksData.push({
+									pitch: n.midi,
+									start: n.time,
+									duration: n.duration,
+									end: end,
+									trackIdx: index,
+									isDrum: isDrum,
+									velocity: n.velocity,
+								});
+							});
+						}
+					});
+					scaleX = 1.0;
+					offsetX = 0;
+					renderMixerUI();
+				}
+
+				// 重构：独立渲染混音器 UI，方便刷新预设和 Solo 状态
+				function renderMixerUI() {
+					const mixerContainer = document.getElementById("trackMixerContainer");
+					if (!parsedMidi) return;
+					mixerContainer.innerHTML = "";
+
+					parsedMidi.tracks.forEach((track, index) => {
+						if (track.notes.length > 0) {
+							const name =
+								track.name ||
+								(track.instrument ? track.instrument.name : `Track ${index}`);
+							const row = document.createElement("div");
+							row.className = "track-row";
+
+							// 构建该轨道当前可用的预设选项
+							let optionsHTML = "";
+							Object.keys(SynthPresets).forEach((key) => {
+								const selected =
+									TrackSettings[index].preset === key ? "selected" : "";
+								optionsHTML += `<fluent-option value="${key}" ${selected}>${key}</fluent-option>`;
+							});
+
+							// 轨道静音(Mute)与独奏(Solo)状态
+							const isSolo = soloTrackIndex === index;
+							const isActive = TrackSettings[index].active;
+
+							row.innerHTML = `
+                        <div style="display:flex; align-items:center; gap:6px; overflow:hidden;">
+                            <input type="checkbox" id="chk_${index}" ${isActive ? "checked" : ""} onchange="updateTrackSetting(${index})"> 
+                            <button class="btn-solo ${isSolo ? "active" : ""}" onclick="toggleSolo(${index})" title="独奏该轨道">S</button>
+                            <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight: ${isActive ? "bold" : "normal"}; color: ${isActive ? "#fff" : "#666"};" title="${name}">[${index}] ${name}</span>
+                        </div>
+                        <fluent-select id="sel_${index}" onchange="updateTrackSetting(${index})">
+                            ${optionsHTML}
+                        </fluent-select>
+                        <div style="display:flex; align-items:center; gap:4px;">
+                            <span style="color:#aaa;">Vol:</span>
+                            <fluent-slider id="vol_${index}" min="0" max="2" step="0.05" value="${TrackSettings[index].volume}" onchange="updateTrackSetting(${index})"></fluent-slider>
+                        </div>
+                    `;
+							mixerContainer.appendChild(row);
+						}
+					});
+					drawPianoRoll();
+				}
+
+				function updateTrackSetting(index) {
+					// 如果处于 Solo 模式下且用户手动干预了其他轨道的 Checkbox，则自动解除 Solo 霸权模式
+					if (soloTrackIndex !== -1 && soloTrackIndex !== index) {
+						soloTrackIndex = -1;
+					}
+
+					const isActive = document.getElementById(`chk_${index}`).checked;
+					const preset = document.getElementById(`sel_${index}`).value;
+					const volume = parseFloat(
+						document.getElementById(`vol_${index}`).value,
+					);
+
+					TrackSettings[index] = { preset, volume, active: isActive };
+					localStorage.setItem(
+						"midi_track_settings",
+						JSON.stringify(TrackSettings),
+					);
+
+					renderMixerUI(); // 刷新 UI 状态
+				}
+
+				function toggleSolo(index) {
+					if (soloTrackIndex === index) {
+						// 关闭 Solo：恢复所有轨道原本的静音/激活状态
+						Object.keys(TrackSettings).forEach((k) => {
+							TrackSettings[k].active =
+								preSoloStates[k] !== undefined ? preSoloStates[k] : true;
+						});
+						soloTrackIndex = -1;
+					} else {
+						// 开启 Solo：如果之前没有 Solo，保存当前状态
+						if (soloTrackIndex === -1) {
+							preSoloStates = {};
+							Object.keys(TrackSettings).forEach((k) => {
+								preSoloStates[k] = TrackSettings[k].active;
+							});
+						}
+						// 排他性静音
+						Object.keys(TrackSettings).forEach((k) => {
+							TrackSettings[k].active = parseInt(k) === index;
+						});
+						soloTrackIndex = index;
+					}
+					localStorage.setItem(
+						"midi_track_settings",
+						JSON.stringify(TrackSettings),
+					);
+					renderMixerUI();
+				}
+
+				// ----------------------------------------------------
+				// 4. 画布渲染 (修复了色彩映射)
+				// ----------------------------------------------------
+				const canvas = document.getElementById("pianoRoll"),
+					ctx = canvas.getContext("2d", { alpha: false });
+
+				function drawPianoRoll() {
+					const container = document.getElementById("canvasContainer");
+					if (container.clientWidth === 0 || container.clientHeight === 0)
+						return;
+
+					canvas.width = container.clientWidth;
+					canvas.height = container.clientHeight;
+					ctx.fillStyle = "#1a1a1a";
+					ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+					if (allTracksData.length === 0) return;
+
+					const activeData = document.getElementById("chkFullSong").checked
+						? allTracksData.filter((n) => TrackSettings[n.trackIdx]?.active)
+						: allTracksData;
+
+					if (activeData.length === 0) return;
+
+					let minP = 127,
+						maxP = 0;
+					activeData.forEach((n) => {
+						if (n.pitch < minP) minP = n.pitch;
+						if (n.pitch > maxP) maxP = n.pitch;
+					});
+					minP = Math.max(0, minP - 2);
+					maxP = Math.min(127, maxP + 2);
+					const pitchRange = maxP - minP || 10,
+						noteHeight = Math.max(2, (canvas.height / pitchRange) * 0.85);
+
+					activeData.forEach((n) => {
+						const x = (n.start / maxTime) * canvas.width * scaleX + offsetX;
+						const w = Math.max(
+							2,
+							(n.duration / maxTime) * canvas.width * scaleX,
+						);
+						if (x + w < 0 || x > canvas.width) return;
+
+						const y =
+							canvas.height -
+							((n.pitch - minP) / pitchRange) * canvas.height -
+							noteHeight;
+
+						// 色彩修复：任意预设均能根据轨道索引(trackIdx)获得独立的 HSL 颜色，打击乐预设固定灰色
+						const isDrumPreset =
+							TrackSettings[n.trackIdx]?.preset === "drum" || n.isDrum;
+						if (isDrumPreset) {
+							ctx.fillStyle = "#888";
+						} else {
+							ctx.fillStyle = `hsl(${(n.trackIdx * 137.5) % 360}, 75%, 65%)`; // 黄金比例分配颜色，保证各轨对比度
+						}
+						ctx.fillRect(x | 0, y | 0, w | 0, noteHeight | 0);
+					});
+
+					const playheadX =
+						(playbackTime / maxTime) * canvas.width * scaleX + offsetX;
+					if (playheadX >= 0 && playheadX <= canvas.width) {
+						ctx.fillStyle = "#ff4757";
+						ctx.fillRect((playheadX | 0) - 1, 0, 2, canvas.height);
+					}
+					document.getElementById("timeBar").innerText = `${Math.floor(
+						playbackTime / 60,
+					)
+						.toString()
+						.padStart(
+							2,
+							"0",
+						)}:${(playbackTime % 60).toFixed(1).padStart(4, "0")} / ${Math.floor(
+						maxTime / 60,
+					)
+						.toString()
+						.padStart(2, "0")}:${(maxTime % 60).toFixed(1).padStart(4, "0")}`;
+				}
+
+				// 交互监听
+				canvas.addEventListener("mousedown", (e) => {
+					if (e.button === 1 || e.shiftKey || e.button === 2) {
+						isDragging = true;
+						dragStartX = e.clientX - offsetX;
+					} else {
+						seekTo(
+							Math.max(
+								0,
+								Math.min(
+									((e.clientX - canvas.getBoundingClientRect().left - offsetX) /
+										scaleX /
+										canvas.width) *
+										maxTime,
+									maxTime,
+								),
+							),
+						);
+					}
+				});
+				canvas.addEventListener("mousemove", (e) => {
+					if (isDragging) {
+						offsetX = e.clientX - dragStartX;
+						if (!isPlaying) requestAnimationFrame(drawPianoRoll);
+					} else if (e.buttons === 1 && !e.shiftKey) {
+						seekTo(
+							Math.max(
+								0,
+								Math.min(
+									((e.clientX - canvas.getBoundingClientRect().left - offsetX) /
+										scaleX /
+										canvas.width) *
+										maxTime,
+									maxTime,
+								),
+							),
+						);
+					}
+				});
+				window.addEventListener("mouseup", () => (isDragging = false));
+				canvas.addEventListener("contextmenu", (e) => e.preventDefault());
+				canvas.addEventListener("wheel", (e) => {
+					e.preventDefault();
+					const zoom = e.deltaY > 0 ? 0.85 : 1.15;
+					offsetX =
+						e.clientX -
+						canvas.getBoundingClientRect().left -
+						(e.clientX - canvas.getBoundingClientRect().left - offsetX) * zoom;
+					scaleX *= zoom;
+					if (!isPlaying) requestAnimationFrame(drawPianoRoll);
+				});
+				window.addEventListener("resize", () => {
+					if (!isPlaying) drawPianoRoll();
+				});
+
+				// ----------------------------------------------------
+				// 5. 引擎发声 (Web Audio API)
+				// ----------------------------------------------------
+				function updateMasterVolume() {
+					if (masterGainNode)
+						masterGainNode.gain.value = parseFloat(
+							document.getElementById("masterVolume").value,
+						);
+				}
+
+				function createPulseWave(context, duty) {
+					const terms = 32;
+					const real = new Float32Array(terms),
+						imag = new Float32Array(terms);
+					for (let i = 1; i < terms; i++) {
+						real[i] = (2 / (i * Math.PI)) * Math.sin(i * Math.PI * duty);
+					}
+					return context.createPeriodicWave(real, imag, {
+						disableNormalization: false,
+					});
+				}
+
+				function createNoiseBuffer(context) {
+					const bufferSize = context.sampleRate * 2;
+					const buffer = context.createBuffer(
+						1,
+						bufferSize,
+						context.sampleRate,
+					);
+					const output = buffer.getChannelData(0);
+					for (let i = 0; i < bufferSize; i++) {
+						output[i] = Math.random() * 2 - 1;
+					}
+					return buffer;
+				}
+
+				function testPreset() {
+					if (!audioCtx) initAudio();
+					if (audioCtx.state === "suspended") audioCtx.resume();
+					const target = document.getElementById("editTarget").value;
+					const preset = SynthPresets[target];
+					playSynthNote(
+						{ pitch: 60, start: 0, end: 0.5, velocity: 1.0 },
+						audioCtx.currentTime,
+						preset,
+						1.0,
+					);
+				}
+
+				function initAudio() {
+					if (audioCtx) audioCtx.close();
+					audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+					masterGainNode = audioCtx.createGain();
+					masterGainNode.gain.value = parseFloat(
+						document.getElementById("masterVolume").value,
+					);
+					masterGainNode.connect(audioCtx.destination);
+				}
+
+				function togglePlay() {
+					isPlaying ? stopPlayback() : startPlayback();
+				}
+				function seekTo(time) {
+					playbackTime = time;
+					if (isPlaying) {
+						stopPlayback();
+						startPlayback();
+					} else {
+						drawPianoRoll();
+					}
+				}
+
+				function startPlayback() {
+					if (maxTime === 0) return;
+					isPlaying = true;
+					document.getElementById("btnPlay").innerHTML = "⏸ 暂停";
+					initAudio();
+
+					const activeData = allTracksData.filter(
+						(n) => TrackSettings[n.trackIdx]?.active,
+					);
+					pendingNotes = activeData
+						.filter((n) => n.start >= playbackTime)
+						.sort((a, b) => a.start - b.start);
+					startTimeBase = audioCtx.currentTime - playbackTime;
+
+					scheduleTimer = setInterval(scheduleAudio, 25);
+					visualTimer = requestAnimationFrame(updateVisuals);
+				}
+
+				function stopPlayback() {
+					isPlaying = false;
+					document.getElementById("btnPlay").innerHTML = "▶ 播放";
+					clearInterval(scheduleTimer);
+					cancelAnimationFrame(visualTimer);
+					if (audioCtx) {
+						audioCtx.close();
+						audioCtx = null;
+					}
+				}
+
+				function scheduleAudio() {
+					if (!isPlaying || !audioCtx) return;
+					const lookaheadTime = audioCtx.currentTime - startTimeBase + 0.1;
+					while (
+						pendingNotes.length > 0 &&
+						pendingNotes[0].start <= lookaheadTime
+					) {
+						const note = pendingNotes.shift();
+						const tSet = TrackSettings[note.trackIdx];
+						const preset = SynthPresets[tSet.preset] || SynthPresets["lead"]; // 保底防止预设被删时报错
+						playSynthNote(note, startTimeBase, preset, tSet.volume);
+					}
+				}
+
+				function playSynthNote(note, baseTime, preset, trackVolume) {
+					if (!audioCtx || trackVolume <= 0) return;
+					const playTime = baseTime + note.start;
+					const stopTime = baseTime + note.end;
+					const freq = 440 * Math.pow(2, (note.pitch - 69) / 12);
+
+					const noteGain = audioCtx.createGain();
+					const maxVol = Math.max(
+						0.001,
+						(note.velocity || 0.8) * 0.4 * trackVolume,
+					);
+
+					noteGain.gain.setValueAtTime(0, playTime);
+					noteGain.gain.linearRampToValueAtTime(
+						maxVol,
+						playTime + preset.attack,
+					);
+					noteGain.gain.linearRampToValueAtTime(
+						maxVol * preset.sustain,
+						playTime + preset.attack + preset.decay,
+					);
+					noteGain.gain.setValueAtTime(maxVol * preset.sustain, stopTime);
+					noteGain.gain.linearRampToValueAtTime(0, stopTime + preset.release);
+					noteGain.connect(masterGainNode);
+
+					let source;
+					if (preset.wave === "noise") {
+						source = audioCtx.createBufferSource();
+						source.buffer = createNoiseBuffer(audioCtx);
+						source.loop = true;
+						const filter = audioCtx.createBiquadFilter();
+						filter.type = "lowpass";
+						filter.frequency.setValueAtTime(freq * 4, playTime);
+						filter.frequency.exponentialRampToValueAtTime(100, playTime + 0.1);
+						source.connect(filter);
+						filter.connect(noteGain);
+					} else {
+						source = audioCtx.createOscillator();
+						if (preset.wave === "pulse")
+							source.setPeriodicWave(createPulseWave(audioCtx, preset.duty));
+						else source.type = preset.wave;
+						source.frequency.value = freq;
+						source.connect(noteGain);
+					}
+					source.start(playTime);
+					source.stop(stopTime + preset.release + 0.1);
+				}
+
+				function updateVisuals() {
+					if (!isPlaying || !audioCtx) return;
+					playbackTime = audioCtx.currentTime - startTimeBase;
+					if (playbackTime >= maxTime) {
+						playbackTime = 0;
+						stopPlayback();
+						drawPianoRoll();
+						return;
+					}
+					drawPianoRoll();
+					visualTimer = requestAnimationFrame(updateVisuals);
+				}
+
+				function sendToPremiere() {
+					const activeData = allTracksData.filter(
+						(n) => TrackSettings[n.trackIdx]?.active,
+					);
+					if (!activeData.length)
+						return alert("没有选中任何激活的轨道用于导出！");
+					const exportData = activeData.map((n) => ({
+						pitch: n.pitch,
+						start_time: n.start,
+					}));
+					const csInterface = new CSInterface();
+					csInterface.evalScript(
+						'$._PPP_.importDataDirectly("' +
+							encodeURIComponent(JSON.stringify(exportData)) +
+							'")',
+					);
+				}
+			</script>
+		</fluent-provider>
+	</body>
+</html>
